@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X, School, FileText, UserIcon, BookOpen, Clock, Users, ChevronDown, Shield, Settings, GraduationCap } from 'lucide-react';
 export default function Sidebar({ user, lang, activeSidebarTab, setActiveSidebarTab, mobileSidebarOpen, setMobileSidebarOpen, adminUserMenuOpen, setAdminUserMenuOpen }) {
+    const [adminCardsMenuOpen, setAdminCardsMenuOpen] = useState(false);
     return (<>
       <aside className={`
         fixed inset-y-0 left-0 z-30 w-64 bg-slate-900 text-slate-100 flex flex-col justify-between p-6 transform transition-transform duration-300 md:relative md:translate-x-0 md:bg-white md:text-slate-800 md:p-4 md:w-60 md:shrink-0 md:border-r md:border-slate-200/80 md:sticky md:top-24 rounded-2xl md:shadow-none shadow-2xl md:h-[calc(100vh-8rem)]
@@ -25,7 +26,6 @@ export default function Sidebar({ user, lang, activeSidebarTab, setActiveSidebar
               {[
                 { id: 'overview', label: lang === 'fr' ? 'Aperçu' : 'Institution Overview', icon: School },
                 { id: 'admissions', label: lang === 'fr' ? 'Sélections' : 'Screening Queue', icon: FileText },
-                { id: 'id_cards', label: lang === 'fr' ? 'Cartes d\'identité' : 'Student ID Cards', icon: UserIcon },
                 { id: 'classes', label: lang === 'fr' ? 'Gestion des Classes' : 'Classes & Sections', icon: BookOpen },
                 { id: 'audit_logs', label: lang === 'fr' ? 'Logs d\'Audit' : 'System Audit Logs', icon: Clock },
             ].map((item) => {
@@ -40,6 +40,42 @@ export default function Sidebar({ user, lang, activeSidebarTab, setActiveSidebar
                     <span className="truncate">{item.label}</span>
                   </button>);
             })}
+
+              {/* Collapsible ID Cards Submenu */}
+              <div className="space-y-1">
+                <button onClick={() => {
+                  setAdminCardsMenuOpen(!adminCardsMenuOpen);
+                }} className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${activeSidebarTab === 'id_cards' || activeSidebarTab === 'teacher_cards'
+                    ? 'bg-slate-800 text-white md:bg-slate-100 md:text-slate-900'
+                    : 'text-slate-400 hover:text-slate-100 md:text-slate-600 md:hover:text-slate-900 md:hover:bg-slate-50'}`}>
+                  <div className="flex items-center gap-3 truncate">
+                    <UserIcon className="w-4 h-4 shrink-0 text-blue-600"/>
+                    <span className="truncate">{lang === 'fr' ? 'Cartes d\'Identité' : 'ID Cards'}</span>
+                  </div>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 shrink-0 ${adminCardsMenuOpen ? 'rotate-180' : ''}`}/>
+                </button>
+
+                {adminCardsMenuOpen && (<div className="pl-4 space-y-1 mt-1 border-l border-slate-800 md:border-slate-200 ml-4">
+                    <button onClick={() => {
+                      setActiveSidebarTab('id_cards');
+                      setMobileSidebarOpen(false);
+                    }} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${activeSidebarTab === 'id_cards'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-slate-100 md:text-slate-600 md:hover:text-slate-900 hover:bg-slate-800 md:hover:bg-slate-50'}`}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                      <span>{lang === 'fr' ? 'Élèves' : 'Pupils'}</span>
+                    </button>
+                    <button onClick={() => {
+                      setActiveSidebarTab('teacher_cards');
+                      setMobileSidebarOpen(false);
+                    }} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${activeSidebarTab === 'teacher_cards'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-slate-100 md:text-slate-600 md:hover:text-slate-900 hover:bg-slate-800 md:hover:bg-slate-50'}`}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                      <span>{lang === 'fr' ? 'Enseignants' : 'Teachers'}</span>
+                    </button>
+                  </div>)}
+              </div>
 
               {/* Collapsible User Directory Submenu */}
               <div className="space-y-1">
@@ -97,6 +133,7 @@ export default function Sidebar({ user, lang, activeSidebarTab, setActiveSidebar
           {user.role === 'teacher' && [
             { id: 'onboarding', label: lang === 'fr' ? 'Profil & Diplômes' : 'Profile & Credentials', icon: UserIcon },
             { id: 'allocations', label: lang === 'fr' ? 'Affectations' : 'My Allocations', icon: BookOpen },
+            { id: 'id_card', label: lang === 'fr' ? 'Carte d\'Identité' : 'Digital ID Card', icon: GraduationCap },
             { id: 'profile', label: lang === 'fr' ? 'Mon Profil' : 'My Profile', icon: Settings },
         ].map((item) => {
             const Icon = item.icon;

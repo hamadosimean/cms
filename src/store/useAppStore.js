@@ -706,6 +706,60 @@ export const useAppStore = create((set, get) => ({
       formSchoolColor:
         typeof val === "function" ? val(get().formSchoolColor) : val,
     }),
+  formSchoolYear: "",
+  setFormSchoolYear: (val) =>
+    set({
+      formSchoolYear:
+        typeof val === "function" ? val(get().formSchoolYear) : val,
+    }),
+  adminPrincipals: [],
+  setAdminPrincipals: (val) =>
+    set({
+      adminPrincipals:
+        typeof val === "function" ? val(get().adminPrincipals) : val,
+    }),
+  showPrincipalModal: false,
+  setShowPrincipalModal: (val) =>
+    set({
+      showPrincipalModal:
+        typeof val === "function" ? val(get().showPrincipalModal) : val,
+    }),
+  editingPrincipalId: null,
+  setEditingPrincipalId: (val) =>
+    set({
+      editingPrincipalId:
+        typeof val === "function" ? val(get().editingPrincipalId) : val,
+    }),
+  formPrincipalUser: "",
+  setFormPrincipalUser: (val) =>
+    set({
+      formPrincipalUser:
+        typeof val === "function" ? val(get().formPrincipalUser) : val,
+    }),
+  formPrincipalFirst: "",
+  setFormPrincipalFirst: (val) =>
+    set({
+      formPrincipalFirst:
+        typeof val === "function" ? val(get().formPrincipalFirst) : val,
+    }),
+  formPrincipalLast: "",
+  setFormPrincipalLast: (val) =>
+    set({
+      formPrincipalLast:
+        typeof val === "function" ? val(get().formPrincipalLast) : val,
+    }),
+  formPrincipalYear: "",
+  setFormPrincipalYear: (val) =>
+    set({
+      formPrincipalYear:
+        typeof val === "function" ? val(get().formPrincipalYear) : val,
+    }),
+  formPrincipalIsCurrent: false,
+  setFormPrincipalIsCurrent: (val) =>
+    set({
+      formPrincipalIsCurrent:
+        typeof val === "function" ? val(get().formPrincipalIsCurrent) : val,
+    }),
   emailAlertLogs: [],
   setEmailAlertLogs: (val) =>
     set({

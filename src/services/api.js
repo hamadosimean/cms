@@ -5,6 +5,21 @@
 /**
  * Custom Error for API calls to preserve status code and structured errors.
  */
+// Intercept fetch calls to append authentication tokens automatically
+if (typeof window !== 'undefined') {
+    const originalFetch = window.fetch;
+    window.fetch = async (url, options = {}) => {
+        const token = localStorage.getItem('school_auth_token');
+        if (token && typeof url === 'string' && url.startsWith('/api')) {
+            options.headers = {
+                ...options.headers,
+                'Authorization': `Bearer ${token}`,
+            };
+        }
+        return originalFetch(url, options);
+    };
+}
+
 export class APIError extends Error {
     status;
     constructor(message, status) {

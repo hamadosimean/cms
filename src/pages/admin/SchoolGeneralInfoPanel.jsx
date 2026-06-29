@@ -39,6 +39,8 @@ export default function SchoolGeneralInfoPanel() {
     setFormSchoolWebsite,
     formSchoolColor,
     setFormSchoolColor,
+    formSchoolYear,
+    setFormSchoolYear,
   } = useAppStore();
 
   const { handleSaveSchoolInfo, handleSchoolLogoUpload } = useAppHandlers();
@@ -75,6 +77,7 @@ export default function SchoolGeneralInfoPanel() {
               setFormSchoolPrincipal(schoolInfo.principal_name || "");
               setFormSchoolWebsite(schoolInfo.website_url || "");
               setFormSchoolColor(schoolInfo.color_theme || "#2563eb");
+              setFormSchoolYear(schoolInfo.school_year || "2025-2026");
               setIsEditingSchoolInfo(true);
             }}
             className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase border border-blue-200 hover:bg-blue-50 text-blue-600 transition flex items-center gap-1 min-h-11 cursor-pointer"
@@ -284,6 +287,21 @@ export default function SchoolGeneralInfoPanel() {
                 />
               </div>
 
+              {/* School Year (Academic Year) */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-400">
+                  {lang === "fr" ? "Année Scolaire" : "School Year (Academic Year)"}
+                </label>
+                <input
+                  type="text"
+                  value={formSchoolYear}
+                  onChange={(e) => setFormSchoolYear(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500 font-medium"
+                  placeholder="e.g. 2025-2026"
+                  required
+                />
+              </div>
+
               {/* Principal Name */}
               <div className="space-y-2">
                 <label className="block text-xs font-bold uppercase tracking-wide text-slate-400">
@@ -408,6 +426,14 @@ export default function SchoolGeneralInfoPanel() {
                   </span>
                   <p className="text-slate-700 font-semibold">
                     {schoolInfo.established_year || 1982}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                    {lang === "fr" ? "Année Scolaire" : "School Year"}
+                  </span>
+                  <p className="text-slate-700 font-semibold">
+                    {schoolInfo.school_year || "2025-2026"}
                   </p>
                 </div>
                 <div className="space-y-1">

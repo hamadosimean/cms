@@ -178,7 +178,7 @@ export function ImageCropperModal({ imageSrc, onCrop, onClose, lang = "en" }) {
               }}
               className={`select-none pointer-events-none transition-opacity duration-200 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
               referrerPolicy="no-referrer"
-              crossOrigin="anonymous"
+              crossOrigin={imageSrc?.startsWith("data:") ? undefined : "anonymous"}
             />
             {/* Aspect Ratio Guide Box (Outer darkening, optional grid) */}
             <div className="absolute inset-0 pointer-events-none border border-white/20 rounded-xl flex items-center justify-center">

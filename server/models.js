@@ -7,6 +7,7 @@ const userSchema = new Schema({
   role: { type: String, required: true },
   preferred_language: { type: String, default: "en" },
   is_active: { type: Boolean, default: true },
+  password: { type: String },
   created_at: { type: String },
   updated_at: { type: String },
 });
@@ -60,6 +61,8 @@ const teacherProfileSchema = new Schema({
   curriculum_notes: { type: String, default: "" },
   assigned_classes: [{ type: String }],
   assigned_courses: [{ type: String }],
+  profile_photo_url: { type: String, default: "" },
+  staff_signature: { type: String, default: "" },
 });
 export const TeacherProfileModel =
   mongoose.models.TeacherProfile ||
@@ -95,12 +98,19 @@ const schoolInfoSchema = new Schema({
   principal_name: { type: String },
   website_url: { type: String },
   color_theme: { type: String },
+  school_year: { type: String, default: "2025-2026" },
 });
 export const SchoolInfoModel =
   mongoose.models.SchoolInfo || mongoose.model("SchoolInfo", schoolInfoSchema);
 const signatureSchema = new Schema({
-  id: { type: String, default: "default_signature" },
+  id: { type: String, required: true, unique: true },
   signature: { type: String, default: null },
+  principal: { type: String },
+  name: { type: String },
+  first_name: { type: String },
+  last_name: { type: String },
+  year: { type: String },
+  is_current: { type: Boolean, default: false },
 });
 export const SignatureModel =
   mongoose.models.Signature || mongoose.model("Signature", signatureSchema);

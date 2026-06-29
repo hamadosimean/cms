@@ -272,6 +272,24 @@ export const useAppHandlers = () => {
     setFormSchoolWebsite,
     formSchoolColor,
     setFormSchoolColor,
+    formSchoolYear,
+    setFormSchoolYear,
+    adminPrincipals,
+    setAdminPrincipals,
+    showPrincipalModal,
+    setShowPrincipalModal,
+    editingPrincipalId,
+    setEditingPrincipalId,
+    formPrincipalUser,
+    setFormPrincipalUser,
+    formPrincipalFirst,
+    setFormPrincipalFirst,
+    formPrincipalLast,
+    setFormPrincipalLast,
+    formPrincipalYear,
+    setFormPrincipalYear,
+    formPrincipalIsCurrent,
+    setFormPrincipalIsCurrent,
     emailAlertLogs,
     setEmailAlertLogs,
     onCropComplete,
@@ -528,6 +546,13 @@ export const useAppHandlers = () => {
           const logs = await auditLogsRes.json();
           setAdminAuditLogs(logs);
         }
+        if (user.role === "admin") {
+          const principalsRes = await fetch(`/api/admin/principals?requester_id=${user.id}`);
+          if (principalsRes.ok) {
+            const list = await principalsRes.json();
+            setAdminPrincipals(list);
+          }
+        }
       }
       if (user.role === "teacher") {
         // Fetch teacher syllabus profiles
@@ -677,9 +702,11 @@ export const useAppHandlers = () => {
           body: JSON.stringify({ email, password }),
         });
         if (res.ok) {
-          const loggedUser = await res.json();
+          const authData = await res.json();
+          const loggedUser = authData.user;
           setUser(loggedUser);
           localStorage.setItem("user", JSON.stringify(loggedUser));
+          localStorage.setItem("school_auth_token", authData.token);
           showNotification(
             loggedUser.preferred_language === "fr"
               ? "Connexion réussie !"
@@ -745,6 +772,7 @@ export const useAppHandlers = () => {
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem("user");
+    localStorage.removeItem("school_auth_token");
     setStudentApplication(null);
     setStudentCard(null);
     setEmail("");
@@ -1176,7 +1204,7 @@ export const useAppHandlers = () => {
       const res = await fetch("/api/principal/signature", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ signature: base64Data }),
+        body: JSON.stringify({ signature: base64Data, requester_id: user?.id }),
       });
       if (res.ok) {
         setPrincipalSignature(base64Data);
@@ -1876,6 +1904,115 @@ export const useAppHandlers = () => {
       showNotification("Delete failed", "error");
     }
   };
+
+  const handleSavePrincipal = async (e) => {
+    e.preventDefault();
+    if (!formPrincipalUser || !formPrincipalYear) {
+      showNotification(
+        lang === "fr"
+          ? "Veuillez remplir tous les champs obligatoires."
+          : "All fields are required.",
+        "error",
+      );
+      return;
+    }
+    try {
+      const url = editingPrincipalId
+        ? `/api/admin/principals/${editingPrincipalId}`
+        : "/api/admin/principals";
+      const method = editingPrincipalId ? "PUT" : "POST";
+      const body = {
+        requester_id: user?.id,
+        principal: formPrincipalUser,
+        year: formPrincipalYear,
+        is_current: formPrincipalIsCurrent,
+      };
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        showNotification(
+          editingPrincipalId
+            ? lang === "fr"
+              ? "Principal mis à jour avec succès."
+              : "Principal updated successfully."
+            : lang === "fr"
+              ? "Principal ajouté avec succès."
+              : "Principal added successfully.",
+          "success",
+        );
+        setShowPrincipalModal(false);
+        setEditingPrincipalId(null);
+        setFormPrincipalUser("");
+        setFormPrincipalFirst("");
+        setFormPrincipalLast("");
+        setFormPrincipalYear("");
+        setFormPrincipalIsCurrent(false);
+        fetchPortalData();
+      } else {
+        showNotification("Operation failed", "error");
+      }
+    } catch (err) {
+      showNotification("Failed to save principal", "error");
+    }
+  };
+
+  const handleDeletePrincipal = async (id) => {
+    if (
+      !window.confirm(
+        lang === "fr"
+          ? "Voulez-vous vraiment supprimer ce principal ?"
+          : "Are you sure you want to remove this principal?",
+      )
+    ) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/principals/${id}?requester_id=${user?.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        showNotification(
+          lang === "fr" ? "Principal supprimé." : "Principal successfully removed.",
+          "info",
+        );
+        fetchPortalData();
+      }
+    } catch (err) {
+      showNotification("Delete failed", "error");
+    }
+  };
+
+  const handleSetCurrentPrincipal = async (principalRec) => {
+    try {
+      const res = await fetch(`/api/admin/principals/${principalRec.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requester_id: user?.id,
+          principal: principalRec.principal,
+          first_name: principalRec.first_name,
+          last_name: principalRec.last_name,
+          year: principalRec.year,
+          is_current: true,
+        }),
+      });
+      if (res.ok) {
+        showNotification(
+          lang === "fr"
+            ? "Principal actuel mis à jour."
+            : "Active principal successfully updated.",
+          "success",
+        );
+        fetchPortalData();
+      }
+    } catch (err) {
+      showNotification("Failed to update active principal", "error");
+    }
+  };
+
   const handleRemoveTeacherAssignmentFromClass = async (
     classId,
     teacherId,
@@ -2457,6 +2594,9 @@ export const useAppHandlers = () => {
     handleCardPhotoUpload,
     handleSaveSchoolInfo,
     handleSaveSignature,
+    handleSavePrincipal,
+    handleDeletePrincipal,
+    handleSetCurrentPrincipal,
     handleSchoolLogoUpload,
     handleExportCSV,
     handleExportTeachersCSV,

@@ -1,5 +1,7 @@
 import React from "react";
 import { School } from "lucide-react";
+import { useAppStore } from "../store/useAppStore";
+
 export function StudentIDCard({
   lang,
   studentId,
@@ -12,6 +14,8 @@ export function StudentIDCard({
   cardStatus,
 }) {
   const isFr = lang === "fr";
+  const { schoolInfo } = useAppStore();
+  const principalName = schoolInfo?.principal_name || "Hamado Simean";
   return (
     <div className="relative w-full aspect-[1.58] bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-xl shadow-xl overflow-hidden border border-blue-500/20 p-4 flex flex-col justify-between text-left select-none">
       {/* Micro chips and holographic watermarks for ultra high-end visual look */}
@@ -105,33 +109,32 @@ export function StudentIDCard({
       {/* Dual Signatures Bar */}
       <div className="grid grid-cols-2 gap-4 border-t border-white/10 pt-1 text-[6px] my-0.5">
         {/* Student signature area */}
-        <div className="flex flex-col justify-end">
-          <div className="border-b border-white/20 h-4 flex items-end justify-center">
-            <span className="text-[5px] text-slate-500 italic font-mono mb-0.5">
+        <div className="flex flex-col justify-end text-left">
+          <div className="border-b border-white/20 h-4 flex items-end justify-center relative">
+            <span className="text-[4.5px] text-slate-500 font-mono absolute -bottom-[3px] bg-slate-800 px-1">
               {isFr ? "Signature de l'Élève" : "Student Signature"}
             </span>
           </div>
         </div>
 
         {/* Principal Signature Area */}
-        <div className="flex flex-col justify-between items-end text-right">
-          <span className="text-[5px] text-slate-400 uppercase tracking-widest block leading-none font-bold">
-            {isFr ? "Directeur: A. Sana" : "Principal: A. Sana"}
-          </span>
-          <div className="h-4 flex items-end justify-end mt-1">
-            {principalSignature ? (
+        <div className="flex flex-col justify-end text-right items-end">
+          <div className="h-4 flex items-center justify-center relative w-full border-b border-white/20">
+            <span className="text-[4.5px] text-slate-500 font-mono absolute -bottom-[3px] bg-slate-800 px-1">
+              {isFr ? "Signature du Directeur" : "Principal Signature"}
+            </span>
+            {principalSignature && (
               <img
                 src={principalSignature}
                 alt="Principal Signature"
-                className="max-h-4 object-contain brightness-125 select-none pointer-events-none"
+                className="max-h-4 object-contain brightness-125 select-none pointer-events-none absolute -top-1"
                 referrerPolicy="no-referrer"
               />
-            ) : (
-              <span className="text-[6.5px] font-serif italic text-blue-300">
-                Alassane Sana
-              </span>
             )}
           </div>
+          <span className="text-[5.5px] text-blue-300 font-bold uppercase mt-1">
+            {principalName}
+          </span>
         </div>
       </div>
 

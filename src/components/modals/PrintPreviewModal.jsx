@@ -493,7 +493,7 @@ export const PrintPreviewModal = () => {
                   ) : (
                     <div className="h-10 flex items-end justify-center">
                       <span className="text-xs font-serif italic text-slate-700 font-bold border-b border-slate-300 px-4 pb-1">
-                        Hamado Simean
+                        {schoolInfo?.principal_name || "Hamado Simean"}
                       </span>
                     </div>
                   )}

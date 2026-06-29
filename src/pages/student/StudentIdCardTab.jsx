@@ -127,7 +127,7 @@ export default function StudentIdCardTab({
                     {studentCard.card_status === "pending" ? (
                       <p className="flex items-center gap-1.5 font-medium">
                         <Clock className="w-4 h-4 shrink-0 animate-spin text-blue-500" />
-                        <span>{getTranslation("idPendingReview", lang)}</span>
+                        {/* <span>{getTranslation("idPendingReview", lang)}</span> */}
                       </p>
                     ) : (
                       <div className="space-y-3">
@@ -135,9 +135,9 @@ export default function StudentIdCardTab({
                           <>
                             <p className="flex items-center gap-1.5 font-bold">
                               <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" />
-                              <span>
+                              {/* <span>
                                 {getTranslation("idGeneratedSuccess", lang)}
-                              </span>
+                              </span> */}
                             </p>
 
                             {/* Print download CTA triggers Express binary stream download */}
@@ -147,7 +147,7 @@ export default function StudentIdCardTab({
                               className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition shadow"
                             >
                               <Download className="w-4 h-4" />
-                              <span>{getTranslation("downloadPDF", lang)}</span>
+                              {/* <span>{getTranslation("downloadPDF", lang)}</span> */}
                             </a>
                           </>
                         ) : (
@@ -173,7 +173,8 @@ export default function StudentIdCardTab({
                 )}
 
                 {/* Live Preview Card Overlay */}
-                {idPhoto && (
+                {(idPhoto ||
+                  (studentCard && studentCard.profile_photo_url)) && (
                   <div className="space-y-3">
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                       {getTranslation("previewIDCard", lang)}
@@ -185,7 +186,7 @@ export default function StudentIdCardTab({
                       firstName={user.first_name}
                       lastName={user.last_name}
                       targetClass={targetClass}
-                      idPhoto={idPhoto}
+                      idPhoto={idPhoto || studentCard.profile_photo_url}
                       validUntil={studentCard?.valid_until}
                       principalSignature={principalSignature}
                       cardStatus={studentCard?.card_status}

@@ -9,6 +9,66 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import QRCode from "qrcode";
 import dotenv from "dotenv";
 dotenv.config();
+import crypto from "crypto";
+
+function hashPassword(password) {
+  return crypto.createHash("sha256").update(password).digest("hex");
+}
+
+function generateToken(payload) {
+  const header = Buffer.from(
+    JSON.stringify({ alg: "HS256", typ: "JWT" }),
+  ).toString("base64url");
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const secret = process.env.JWT_SECRET || "super_secret_school_key";
+  const signature = crypto
+    .createHmac("sha256", secret)
+    .update(`${header}.${body}`)
+    .digest("base64url");
+  return `${header}.${body}.${signature}`;
+}
+
+function verifyToken(token) {
+  try {
+    const [header, body, signature] = token.split(".");
+    const secret = process.env.JWT_SECRET || "super_secret_school_key";
+    const expectedSig = crypto
+      .createHmac("sha256", secret)
+      .update(`${header}.${body}`)
+      .digest("base64url");
+    if (signature !== expectedSig) return null;
+    return JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+  } catch (e) {
+    return null;
+  }
+}
+
+const authMiddleware = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.split(" ")[1];
+    const decoded = verifyToken(token);
+    if (decoded) {
+      req.user = decoded;
+      return next();
+    }
+  }
+
+  // Fallback to body/query requester_id for backward compatibility
+  const requesterId = req.body?.requester_id || req.query?.requester_id;
+  if (requesterId) {
+    const user = await UserModel.findOne({ id: requesterId }).lean();
+    if (user) {
+      req.user = { id: user.id, email: user.email, role: user.role };
+      return next();
+    }
+  }
+
+  return res
+    .status(401)
+    .json({ error: "Unauthorized. Valid authentication session required." });
+};
+
 import { GoogleGenAI, Type } from "@google/genai";
 
 import { connectDB } from "./db.js";
@@ -371,8 +431,13 @@ const initialSchoolInfo = {
 };
 
 async function seedDatabase() {
-  if ((await UserModel.countDocuments()) === 0)
-    await UserModel.insertMany(initialUsers);
+  if ((await UserModel.countDocuments()) === 0) {
+    const hashedUsers = initialUsers.map((u) => ({
+      ...u,
+      password: hashPassword("password"),
+    }));
+    await UserModel.insertMany(hashedUsers);
+  }
   if ((await ApplicationModel.countDocuments()) === 0)
     await ApplicationModel.insertMany(initialApplications);
   if ((await SchoolCardModel.countDocuments()) === 0)
@@ -384,19 +449,67 @@ async function seedDatabase() {
   if ((await ClassItemModel.countDocuments()) === 0)
     await ClassItemModel.insertMany(initialClasses);
   if ((await SchoolInfoModel.countDocuments()) === 0) {
-    await SchoolInfoModel.create(initialSchoolInfo);
+    await SchoolInfoModel.create({
+      ...initialSchoolInfo,
+      school_year: "2025-2026",
+    });
   } else {
     await SchoolInfoModel.updateOne(
       { id: "default_school_info" },
-      { $set: { name: "College LA SALE", principal_name: "Hamado Simean" } },
+      {
+        $set: {
+          name: "College LA SALE",
+          principal_name: "Hamado Simean",
+          school_year: "2025-2026",
+        },
+      },
     );
   }
-  if ((await SignatureModel.countDocuments()) === 0)
-    await SignatureModel.create({ id: "default_signature", signature: null });
+  if ((await SignatureModel.countDocuments()) === 0) {
+    await SignatureModel.create({
+      id: "sig_hamado",
+      principal: "usr_principal",
+      first_name: "Hamado",
+      last_name: "Simean",
+      name: "Hamado Simean",
+      year: "2025-2026",
+      is_current: true,
+      signature: null,
+    });
+  } else {
+    // Migration script: update legacy principal signatures that lack the principal field
+    await SignatureModel.updateMany(
+      { principal: { $exists: false } },
+      {
+        $set: {
+          principal: "usr_principal",
+          first_name: "Alassane",
+          last_name: "Sana",
+          name: "Alassane Sana",
+          year: "2025-2026",
+          is_current: true,
+        },
+      },
+    );
+  }
 }
 
 // Helper to simulate email alerts in Console
 function simulateEmailAlert(user, subject, body) {
+  emailjs.sendForm(SERVICE_ID, TEMPLATE_ID, form.current, PUBLIC_KEY).then(
+    (result) => {
+      console.log(result.text);
+      setStatus({ type: "success", message: "Message sent successfully!" });
+      form.current.reset();
+    },
+    (error) => {
+      console.log(error.text);
+      setStatus({
+        type: "error",
+        message: "Failed to send message. Please try again.",
+      });
+    },
+  );
   console.log(`\n======================================================`);
   console.log(`[EMAIL DISPATCH SIMULATOR]`);
   console.log(`To: ${user.first_name} ${user.last_name} <${user.email}>`);
@@ -427,6 +540,7 @@ app.post("/api/auth/register", async (req, res) => {
     last_name,
     email,
     role,
+    password: hashPassword(password),
     preferred_language: preferred_language || "en",
     is_active: true,
     created_at: new Date().toISOString(),
@@ -442,7 +556,12 @@ app.post("/api/auth/register", async (req, res) => {
       assigned_courses: [],
     });
   }
-  return res.status(201).json(newUser.toObject());
+  const token = generateToken({
+    id: newUser.id,
+    email: newUser.email,
+    role: newUser.role,
+  });
+  return res.status(201).json({ user: newUser.toObject(), token });
 });
 
 app.post("/api/auth/login", async (req, res) => {
@@ -453,15 +572,26 @@ app.post("/api/auth/login", async (req, res) => {
   const user = await UserModel.findOne({
     email: { $regex: new RegExp("^" + email + "$", "i") },
   }).lean();
-  if (!user || password !== "password") {
-    if (!user) {
-      return res.status(401).json({
-        error:
-          'Invalid credentials. Use student@school.edu, teacher@school.edu, or admin@school.edu with "password".',
-      });
-    }
+  if (!user) {
+    return res.status(401).json({
+      error: "Invalid email or password.",
+    });
   }
-  return res.json(user);
+  const hashed = hashPassword(password);
+  const isValid = user.password
+    ? user.password === hashed
+    : password === "password";
+  if (!isValid) {
+    return res.status(401).json({
+      error: "Invalid email or password.",
+    });
+  }
+  const token = generateToken({
+    id: user.id,
+    email: user.email,
+    role: user.role,
+  });
+  return res.json({ user, token });
 });
 
 app.get("/api/users", async (req, res) => {
@@ -488,6 +618,7 @@ app.post("/api/admins", async (req, res) => {
     last_name,
     email,
     role: "admin",
+    password: hashPassword(password),
     preferred_language: preferred_language || "en",
     is_active: true,
     created_at: new Date().toISOString(),
@@ -587,7 +718,7 @@ app.post("/api/applications/:id/evaluate", async (req, res) => {
     });
   }
 
-  const sigDoc = await SignatureModel.findOne({ id: "default_signature" });
+  const sigDoc = await SignatureModel.findOne({ is_current: true });
   const principalSignature = sigDoc ? sigDoc.signature : null;
 
   if (status === "approved" && !principalSignature) {
@@ -691,7 +822,7 @@ app.post("/api/id-cards/:id/approve", async (req, res) => {
   if (!card) {
     return res.status(404).json({ error: "ID card request not found." });
   }
-  const sigDoc = await SignatureModel.findOne({ id: "default_signature" });
+  const sigDoc = await SignatureModel.findOne({ is_current: true });
   const principalSignature = sigDoc ? sigDoc.signature : null;
   if (!principalSignature) {
     return res.status(400).json({
@@ -714,7 +845,20 @@ app.get("/api/school-info", async (req, res) => {
   const info = await SchoolInfoModel.findOne({
     id: "default_school_info",
   }).lean();
-  return res.json(info || initialSchoolInfo);
+  const schoolInfo = info || { ...initialSchoolInfo };
+
+  // Resolve dynamic principal name from active signature record
+  const currentSigDoc = await SignatureModel.findOne({ is_current: true });
+  if (currentSigDoc && currentSigDoc.principal) {
+    const pUser = await UserModel.findOne({
+      id: currentSigDoc.principal,
+    }).lean();
+    if (pUser) {
+      schoolInfo.principal_name = `${pUser.first_name} ${pUser.last_name}`;
+    }
+  }
+
+  return res.json(schoolInfo);
 });
 
 app.put("/api/school-info", async (req, res) => {
@@ -734,6 +878,7 @@ app.put("/api/school-info", async (req, res) => {
     principal_name,
     website_url,
     color_theme,
+    school_year,
     requester_id,
   } = req.body;
   if (!name) {
@@ -759,6 +904,7 @@ app.put("/api/school-info", async (req, res) => {
       principal_name: principal_name ?? "",
       website_url: website_url ?? "",
       color_theme: color_theme ?? "#2563eb",
+      school_year: school_year ?? "2025-2026",
     },
     { new: true, upsert: true },
   );
@@ -781,17 +927,23 @@ app.put("/api/school-info", async (req, res) => {
 });
 
 app.get("/api/principal/signature", async (req, res) => {
-  const sigDoc = await SignatureModel.findOne({ id: "default_signature" });
+  const sigDoc = await SignatureModel.findOne({ is_current: true });
   return res.json({ signature: sigDoc ? sigDoc.signature : null });
 });
 
 app.post("/api/principal/signature", async (req, res) => {
-  const { signature } = req.body;
-  await SignatureModel.findOneAndUpdate(
-    { id: "default_signature" },
-    { signature },
-    { upsert: true },
-  );
+  const { signature, requester_id } = req.body;
+  const currentPrincipal = await SignatureModel.findOne({ is_current: true });
+  if (!currentPrincipal) {
+    return res.status(404).json({ error: "No active principal found." });
+  }
+  if (requester_id && currentPrincipal.principal !== requester_id) {
+    return res
+      .status(403)
+      .json({ error: "Only the current principal can sign." });
+  }
+  currentPrincipal.signature = signature;
+  await currentPrincipal.save();
   return res.json({ success: true, signature });
 });
 
@@ -831,7 +983,7 @@ app.put("/api/id-cards/:id", async (req, res) => {
     card.valid_until = valid_until;
   }
   if (card_status !== undefined) {
-    const sigDoc = await SignatureModel.findOne({ id: "default_signature" });
+    const sigDoc = await SignatureModel.findOne({ is_current: true });
     const principalSignature = sigDoc ? sigDoc.signature : null;
     if (card_status === "generated" && !principalSignature) {
       return res.status(400).json({
@@ -852,16 +1004,13 @@ app.put("/api/id-cards/:id", async (req, res) => {
 
 app.get("/verify/:studentId", async (req, res) => {
   const { studentId } = req.params;
-  const student = await UserModel.findOne({ id: studentId }).lean();
-  const card = await SchoolCardModel.findOne({ student_id: studentId }).lean();
-  const application = await ApplicationModel.findOne({
-    student_id: studentId,
-  }).lean();
-  if (!student) {
+  const user = await UserModel.findOne({ id: studentId }).lean();
+
+  if (!user) {
     return res.status(404).send(`
       <html>
         <head>
-          <title>Verification Failed </title>
+          <title>Verification Failed</title>
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <script src="https://cdn.tailwindcss.com"></script>
         </head>
@@ -871,20 +1020,75 @@ app.get("/verify/:studentId", async (req, res) => {
               <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </div>
             <h1 class="text-xl font-bold text-slate-800">Verification Failed</h1>
-            <p class="text-sm text-slate-500 mt-2">The scanned student credentials do not match our database records.</p>
+            <p class="text-sm text-slate-500 mt-2">The scanned credentials do not match our database records.</p>
             <div class="mt-6 text-xs text-slate-400">Saint Jude Academy • Security Verification System</div>
           </div>
         </body>
       </html>
     `);
   }
-  const isApproved = card?.card_status === "generated";
-  const targetClass = application?.target_class || "N/A";
-  const photo = card?.profile_photo_url || "";
+
+  let isApproved = false;
+  let subHeader = "ONLINE SECURITY VERIFICATION";
+  let roleBadge = "";
+  let detailsHtml = "";
+  let photo = "";
+
+  if (user.role === "teacher") {
+    const profile = await TeacherProfileModel.findOne({ id: studentId }).lean();
+    isApproved = profile && !!profile.profile_photo_url;
+    photo = profile?.profile_photo_url || "";
+    roleBadge = isApproved
+      ? "Verified Staff / Enseignant Vérifié"
+      : "Staff Profile Incomplete";
+    subHeader = "FACULTY / STAFF ONLINE VERIFICATION";
+
+    detailsHtml = `
+      <div class="flex justify-between py-1 border-b border-slate-200/60">
+        <span class="font-semibold text-slate-500">Qualifications:</span>
+        <span class="text-slate-800 font-medium text-right max-w-[200px] truncate">${profile?.qualifications || "Not Specified"}</span>
+      </div>
+      <div class="flex justify-between py-1 border-b border-slate-200/60">
+        <span class="font-semibold text-slate-500">Experience:</span>
+        <span class="text-slate-800 font-medium">${profile?.experience_years || 0} Years</span>
+      </div>
+      <div class="flex justify-between py-1 border-b border-slate-200/60">
+        <span class="font-semibold text-slate-500">Status:</span>
+        <span class="text-slate-800 font-bold ${isApproved ? "text-emerald-600" : "text-amber-500"}">${isApproved ? "ACTIVE FACULTY" : "INCOMPLETE PROFILE"}</span>
+      </div>
+    `;
+  } else {
+    // Student logic
+    const card = await SchoolCardModel.findOne({
+      student_id: studentId,
+    }).lean();
+    const application = await ApplicationModel.findOne({
+      student_id: studentId,
+    }).lean();
+    isApproved = card?.card_status === "generated";
+    photo = card?.profile_photo_url || "";
+    roleBadge = isApproved
+      ? "Verified Student / Étudiant Vérifié"
+      : "Card Status: Pending / En Attente";
+    subHeader = "ONLINE STUDENT VERIFICATION";
+    const targetClass = application?.target_class || "N/A";
+
+    detailsHtml = `
+      <div class="flex justify-between py-1 border-b border-slate-200/60">
+        <span class="font-semibold text-slate-500">Class/Grade:</span>
+        <span class="text-slate-800 font-medium">${targetClass}</span>
+      </div>
+      <div class="flex justify-between py-1 border-b border-slate-200/60">
+        <span class="font-semibold text-slate-500">Status:</span>
+        <span class="text-slate-800 font-bold ${isApproved ? "text-emerald-600" : "text-amber-500"}">${isApproved ? "ACTIVE / ADMITTED" : "PENDING REVIEW"}</span>
+      </div>
+    `;
+  }
+
   return res.send(`
     <html>
       <head>
-        <title>Student Verification </title>
+        <title>Identity Verification</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <script src="https://cdn.tailwindcss.com"></script>
       </head>
@@ -892,41 +1096,30 @@ app.get("/verify/:studentId", async (req, res) => {
         <div class="bg-white rounded-3xl shadow-xl max-w-md w-full overflow-hidden border border-slate-100">
           <div class="bg-linear-to-r from-blue-700 to-indigo-800 px-6 py-6 text-center text-white relative">
             <h1 class="text-lg font-bold tracking-wider">SAINT JUDE ACADEMY</h1>
-            <p class="text-[10px] text-blue-200 tracking-widest font-semibold mt-0.5">ONLINE STUDENT VERIFICATION</p>
+            <p class="text-[10px] text-blue-200 tracking-widest font-semibold mt-0.5">${subHeader}</p>
           </div>
           <div class="p-6 text-center space-y-6">
             <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${isApproved ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"}">
               <span class="w-2 h-2 rounded-full ${isApproved ? "bg-emerald-500" : "bg-amber-500"} animate-pulse"></span>
-              ${isApproved ? "Verified Student / Étudiant Vérifié" : "Card Status: Pending / En Attente"}
+              ${roleBadge}
             </div>
             <div class="w-28 h-28 mx-auto rounded-2xl overflow-hidden shadow-md bg-slate-100 border-2 border-slate-200">
               ${
                 photo
-                  ? `
-                <img src="${photo}" alt="Student Photo" class="w-full h-full object-cover" />
-              `
-                  : `
-                <div class="w-full h-full flex items-center justify-center text-slate-400 font-bold text-sm">No Photo</div>
-              `
+                  ? `<img src="${photo}" alt="Portrait Photo" class="w-full h-full object-cover" />`
+                  : `<div class="w-full h-full flex items-center justify-center text-slate-400 font-bold text-sm">No Photo</div>`
               }
             </div>
             <div class="space-y-1">
-              <h2 class="text-xl font-bold text-slate-800">${student.last_name.toUpperCase()} ${student.first_name}</h2>
-              <p class="text-xs text-slate-400 font-mono">ID: ${student.id.toUpperCase()}</p>
+              <h2 class="text-xl font-bold text-slate-800">${user.last_name.toUpperCase()} ${user.first_name}</h2>
+              <p class="text-xs text-slate-400 font-mono">ID: ${user.id.toUpperCase()}</p>
             </div>
             <div class="bg-slate-50 rounded-2xl p-4 border border-slate-100 text-left space-y-3 text-xs">
               <div class="flex justify-between py-1 border-b border-slate-200/60">
                 <span class="font-semibold text-slate-500">Institution:</span>
                 <span class="text-slate-800 font-medium">Saint Jude Academy</span>
               </div>
-              <div class="flex justify-between py-1 border-b border-slate-200/60">
-                <span class="font-semibold text-slate-500">Class/Grade:</span>
-                <span class="text-slate-800 font-medium">${targetClass}</span>
-              </div>
-              <div class="flex justify-between py-1 border-b border-slate-200/60">
-                <span class="font-semibold text-slate-500">Status:</span>
-                <span class="text-slate-800 font-bold ${isApproved ? "text-emerald-600" : "text-amber-500"}">${isApproved ? "ACTIVE / ADMITTED" : "PENDING REVIEW"}</span>
-              </div>
+              ${detailsHtml}
               <div class="flex justify-between py-1">
                 <span class="font-semibold text-slate-500">Validation Period:</span>
                 <span class="text-slate-800 font-medium">2026 - 2027</span>
@@ -1140,22 +1333,64 @@ async function drawIdCardPage(
     currentY -= 15;
   });
   const studSigX = 145;
-  const studSigY = 50;
+  const sigX = 245;
+  const sigY = 32;
+
+  // ---------------- STUDENT SIGNATURE AREA ----------------
+  // page.drawText(isFr ? "Élève" : "Student", {
+  //   x: studSigX,
+  //   y: sigY + 26,
+  //   size: 6.5,
+  //   font: fontHelveticaBold,
+  //   color: rgb(0.4, 0.4, 0.4),
+  // });
+
   page.drawLine({
-    start: { x: studSigX, y: studSigY + 5 },
-    end: { x: studSigX + 65, y: studSigY + 5 },
+    start: { x: studSigX, y: sigY + 6 },
+    end: { x: studSigX + 85, y: sigY + 6 },
     thickness: 0.5,
     color: rgb(0.7, 0.7, 0.7),
   });
+
   page.drawText(isFr ? "Signature de l'Élève" : "Student Signature", {
-    x: studSigX,
-    y: studSigY - 4,
-    size: 5.5,
-    font: fontHelveticaBold,
+    x: studSigX + 5,
+    y: sigY + 7.5,
+    size: 5,
+    font: fontHelvetica,
     color: rgb(0.5, 0.5, 0.5),
   });
-  const sigX = 225;
-  const sigY = 50;
+
+  // ---------------- PRINCIPAL SIGNATURE AREA ----------------
+  // page.drawText(isFr ? "Directeur" : "Principal", {
+  //   x: sigX,
+  //   y: sigY + 26,
+  //   size: 6.5,
+  //   font: fontHelveticaBold,
+  //   color: rgb(0.4, 0.4, 0.4),
+  // });
+  page.drawLine({
+    start: { x: sigX, y: sigY + 6 },
+    end: { x: sigX + 110, y: sigY + 6 },
+    thickness: 0.5,
+    color: rgb(0.7, 0.7, 0.7),
+  });
+
+  page.drawText(isFr ? "Signature du Directeur" : "Principal Signature", {
+    x: sigX + 10,
+    y: sigY + 7.5,
+    size: 5,
+    font: fontHelvetica,
+    color: rgb(0.5, 0.5, 0.5),
+  });
+
+  const pName = schoolInfo.principal_name || "Hamado Simean";
+  page.drawText(pName, {
+    x: sigX,
+    y: sigY - 3,
+    size: 6.5,
+    font: fontHelveticaBold,
+    color: rgb(0.15, 0.2, 0.4),
+  });
   if (principalSignature) {
     try {
       const matches = principalSignature.match(
@@ -1169,37 +1404,22 @@ async function drawIdCardPage(
         if (type === "png") {
           embeddedSig = await pdfDoc.embedPng(sigBytes);
         } else {
-          embeddedImg = await pdfDoc.embedJpg(sigBytes); // Wait, this variable was embeddedImg, let's fix to embeddedSig
           embeddedSig = await pdfDoc.embedJpg(sigBytes);
         }
         if (embeddedSig) {
           page.drawImage(embeddedSig, {
-            x: sigX,
-            y: sigY,
+            x: sigX + 10,
+            y: sigY + 7,
             width: 60,
-            height: 16,
+            height: 14,
           });
         }
       }
     } catch (sigErr) {
       console.error("Failed to embed principal signature to PDF", sigErr);
     }
-  } else {
-    page.drawText("Hamado Simean", {
-      x: sigX,
-      y: sigY + 3,
-      size: 7,
-      font: fontHelvetica,
-      color: rgb(0.15, 0.2, 0.4),
-    });
   }
-  page.drawText(isFr ? "Signature du Directeur" : "Principal Signature", {
-    x: sigX,
-    y: sigY - 4,
-    size: 5.5,
-    font: fontHelveticaBold,
-    color: rgb(0.5, 0.5, 0.5),
-  });
+
   try {
     const verifyUrl = `${protocol}://${host}/verify/${student.id}`;
     const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
@@ -1452,9 +1672,15 @@ app.get("/api/id-cards/download/:studentId", async (req, res) => {
     const infoDoc = await SchoolInfoModel.findOne({
       id: "default_school_info",
     });
-    const sigDoc = await SignatureModel.findOne({ id: "default_signature" });
-    const schoolInfo = infoDoc || initialSchoolInfo;
+    const sigDoc = await SignatureModel.findOne({ is_current: true });
+    const schoolInfo = infoDoc ? infoDoc.toObject() : { ...initialSchoolInfo };
     const principalSignature = sigDoc ? sigDoc.signature : null;
+    if (sigDoc && sigDoc.principal) {
+      const pUser = await UserModel.findOne({ id: sigDoc.principal }).lean();
+      if (pUser) {
+        schoolInfo.principal_name = `${pUser.first_name} ${pUser.last_name}`;
+      }
+    }
 
     await drawIdCardPage(
       pdfDoc,
@@ -1495,9 +1721,15 @@ app.post("/api/id-cards/batch-download", async (req, res) => {
     const infoDoc = await SchoolInfoModel.findOne({
       id: "default_school_info",
     });
-    const sigDoc = await SignatureModel.findOne({ id: "default_signature" });
-    const schoolInfo = infoDoc || initialSchoolInfo;
+    const sigDoc = await SignatureModel.findOne({ is_current: true });
+    const schoolInfo = infoDoc ? infoDoc.toObject() : { ...initialSchoolInfo };
     const principalSignature = sigDoc ? sigDoc.signature : null;
+    if (sigDoc && sigDoc.principal) {
+      const pUser = await UserModel.findOne({ id: sigDoc.principal }).lean();
+      if (pUser) {
+        schoolInfo.principal_name = `${pUser.first_name} ${pUser.last_name}`;
+      }
+    }
 
     for (const studentId of student_ids) {
       const student = await UserModel.findOne({ id: studentId }).lean();
@@ -1578,26 +1810,35 @@ async function drawTeacherIdCardPage(
   const page = pdfDoc.addPage([380, 240]);
   const fontHelvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontHelveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  // 1. Dark background container matching slate-900 / slate-800 look
   page.drawRectangle({
     x: 10,
     y: 10,
     width: 360,
     height: 220,
-    borderColor: rgb(
-      themeColor.r * 0.8,
-      themeColor.g * 0.8,
-      themeColor.b * 0.8,
-    ),
-    borderWidth: 2,
-    color: rgb(0.98, 0.99, 1.0),
+    borderColor: rgb(37 / 255, 99 / 255, 235 / 255), // border-blue-500/20
+    borderWidth: 1,
+    color: rgb(15 / 255, 23 / 255, 42 / 255), // bg-slate-900
   });
-  page.drawRectangle({
-    x: 10,
-    y: 175,
-    width: 360,
-    height: 55,
-    color: rgb(themeColor.r, themeColor.g, themeColor.b),
+
+  // Holographic blue glow background
+  page.drawCircle({
+    x: 350,
+    y: 210,
+    size: 30,
+    color: rgb(37 / 255, 99 / 255, 235 / 255),
+    opacity: 0.1,
   });
+
+  // 2. Header division line
+  page.drawLine({
+    start: { x: 10, y: 175 },
+    end: { x: 370, y: 175 },
+    thickness: 0.5,
+    color: rgb(51 / 255, 65 / 255, 85 / 255), // border-white/10
+  });
+
+  // Header Title in White
   page.drawText(schoolInfo.name.toUpperCase(), {
     x: 25,
     y: 198,
@@ -1605,6 +1846,8 @@ async function drawTeacherIdCardPage(
     font: fontHelveticaBold,
     color: rgb(1, 1, 1),
   });
+
+  // Motto Text in light slate
   const mottoText = schoolInfo.motto
     ? schoolInfo.motto.toUpperCase()
     : isFr
@@ -1615,37 +1858,59 @@ async function drawTeacherIdCardPage(
     y: 184,
     size: 7,
     font: fontHelvetica,
-    color: rgb(0.9, 0.94, 1),
+    color: rgb(148 / 255, 163 / 255, 184 / 255),
   });
-  page.drawRectangle({
-    x: 10,
-    y: 172,
-    width: 360,
-    height: 3,
-    color: rgb(0.9, 0.7, 0.15),
-  });
+
+  // Portrait frame border
   page.drawRectangle({
     x: 25,
     y: 35,
     width: 105,
     height: 120,
-    color: rgb(0.92, 0.94, 0.96),
-    borderColor: rgb(0.75, 0.8, 0.85),
+    color: rgb(15 / 255, 23 / 255, 42 / 255), // bg-slate-900
+    borderColor: rgb(51 / 255, 65 / 255, 85 / 255), // border-white/10
     borderWidth: 1,
   });
-  page.drawCircle({
-    x: 77,
-    y: 105,
-    size: 20,
-    color: rgb(0.6, 0.68, 0.76),
-  });
-  page.drawRectangle({
-    x: 45,
-    y: 45,
-    width: 65,
-    height: 35,
-    color: rgb(0.6, 0.68, 0.76),
-  });
+  if (teacher.profile_photo_url) {
+    try {
+      const matches = teacher.profile_photo_url.match(
+        /^data:image\/(png|jpeg|jpg);base64,(.+)$/,
+      );
+      if (matches) {
+        const type = matches[1];
+        const base64Data = matches[2];
+        const photoBytes = Buffer.from(base64Data, "base64");
+        let embeddedImg =
+          type === "png"
+            ? await pdfDoc.embedPng(photoBytes)
+            : await pdfDoc.embedJpg(photoBytes);
+        if (embeddedImg) {
+          page.drawImage(embeddedImg, {
+            x: 25,
+            y: 35,
+            width: 105,
+            height: 120,
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to embed teacher profile photo to PDF", err);
+    }
+  } else {
+    page.drawCircle({
+      x: 77,
+      y: 105,
+      size: 20,
+      color: rgb(0.6, 0.68, 0.76),
+    });
+    page.drawRectangle({
+      x: 45,
+      y: 45,
+      width: 65,
+      height: 35,
+      color: rgb(0.6, 0.68, 0.76),
+    });
+  }
   const labelX = 145;
   const valueX = 220;
   page.drawText("FACULTY / STAFF", {
@@ -1690,8 +1955,70 @@ async function drawTeacherIdCardPage(
     });
     currentY -= 15;
   });
-  const sigX = 225;
-  const sigY = 50;
+  const staffSigX = 145;
+  const sigX = 245;
+  const sigY = 32;
+
+  // ---------------- STAFF SIGNATURE AREA ----------------
+  // page.drawText("Staff / Enseignant", {
+  //   x: staffSigX,
+  //   y: sigY + 26,
+  //   size: 6.5,
+  //   font: fontHelveticaBold,
+  //   color: rgb(0.4, 0.4, 0.4),
+  // });
+
+  if (teacher.staff_signature) {
+    try {
+      const matches = teacher.staff_signature.match(
+        /^data:image\/(png|jpeg|jpg);base64,(.+)$/,
+      );
+      if (matches) {
+        const type = matches[1];
+        const base64Data = matches[2];
+        const sigBytes = Buffer.from(base64Data, "base64");
+        let embeddedSig =
+          type === "png"
+            ? await pdfDoc.embedPng(sigBytes)
+            : await pdfDoc.embedJpg(sigBytes);
+        if (embeddedSig) {
+          page.drawImage(embeddedSig, {
+            x: staffSigX + 10,
+            y: sigY + 7,
+            width: 60,
+            height: 14,
+          });
+        }
+      }
+    } catch (sigErr) {
+      console.error("Failed to embed staff signature to PDF", sigErr);
+    }
+  }
+
+  page.drawLine({
+    start: { x: staffSigX, y: sigY + 6 },
+    end: { x: staffSigX + 85, y: sigY + 6 },
+    thickness: 0.5,
+    color: rgb(0.7, 0.7, 0.7),
+  });
+
+  page.drawText("Staff Signature", {
+    x: staffSigX + 10,
+    y: sigY + 7.5,
+    size: 5,
+    font: fontHelvetica,
+    color: rgb(0.5, 0.5, 0.5),
+  });
+
+  // ---------------- PRINCIPAL SIGNATURE AREA ----------------
+  // page.drawText(isFr ? "Directeur" : "Principal", {
+  //   x: sigX,
+  //   y: sigY + 26,
+  //   size: 6.5,
+  //   font: fontHelveticaBold,
+  //   color: rgb(0.4, 0.4, 0.4),
+  // });
+
   if (principalSignature) {
     try {
       const matches = principalSignature.match(
@@ -1707,47 +2034,71 @@ async function drawTeacherIdCardPage(
             : await pdfDoc.embedJpg(sigBytes);
         if (embeddedSig) {
           page.drawImage(embeddedSig, {
-            x: sigX,
-            y: sigY,
+            x: sigX + 10,
+            y: sigY + 7,
             width: 60,
-            height: 16,
+            height: 14,
           });
         }
       }
     } catch (sigErr) {
       console.error("Failed to embed principal signature to PDF", sigErr);
     }
-  } else {
-    page.drawText("Hamado Simean", {
-      x: sigX,
-      y: sigY + 3,
-      size: 7,
-      font: fontHelvetica,
-      color: rgb(0.15, 0.2, 0.4),
-    });
   }
-  page.drawText("Principal Signature", {
-    x: sigX,
-    y: sigY - 4,
-    size: 5.5,
-    font: fontHelveticaBold,
-    color: rgb(0.5, 0.5, 0.5),
-  });
-  const staffSigX = 145;
-  const staffSigY = 50;
+
   page.drawLine({
-    start: { x: staffSigX, y: staffSigY + 5 },
-    end: { x: staffSigX + 65, y: staffSigY + 5 },
+    start: { x: sigX, y: sigY + 6 },
+    end: { x: sigX + 110, y: sigY + 6 },
     thickness: 0.5,
     color: rgb(0.7, 0.7, 0.7),
   });
-  page.drawText("Staff Signature", {
-    x: staffSigX,
-    y: staffSigY - 4,
-    size: 5.5,
-    font: fontHelveticaBold,
+
+  page.drawText("Principal Signature", {
+    x: sigX + 10,
+    y: sigY + 7.5,
+    size: 5,
+    font: fontHelvetica,
     color: rgb(0.5, 0.5, 0.5),
   });
+
+  const pName = schoolInfo.principal_name || "Hamado Simean";
+  page.drawText(pName, {
+    x: sigX,
+    y: sigY - 3,
+    size: 6.5,
+    font: fontHelveticaBold,
+    color: rgb(0.15, 0.2, 0.4),
+  });
+
+  try {
+    const verifyUrl = `${protocol}://${host}/verify/${teacher.id}`;
+    const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
+      margin: 1,
+      width: 120,
+    });
+    const qrMatches = qrDataUrl.match(/^data:image\/png;base64,(.+)$/);
+    if (qrMatches) {
+      const qrBytes = Buffer.from(qrMatches[1], "base64");
+      const qrImage = await pdfDoc.embedPng(qrBytes);
+      page.drawRectangle({
+        x: 303,
+        y: 23,
+        width: 59,
+        height: 59,
+        color: rgb(1, 1, 1),
+        borderColor: rgb(0.85, 0.88, 0.92),
+        borderWidth: 1,
+      });
+      page.drawImage(qrImage, {
+        x: 305,
+        y: 25,
+        width: 55,
+        height: 55,
+      });
+    }
+  } catch (qrErr) {
+    console.error("Failed to embed QR code to PDF", qrErr);
+  }
 }
 
 app.get("/api/teacher-id-cards/download/:teacherId", async (req, res) => {
@@ -1758,6 +2109,9 @@ app.get("/api/teacher-id-cards/download/:teacherId", async (req, res) => {
   const user = await UserModel.findOne({ id: teacherId }).lean();
   if (!teacherRec || !user) {
     return res.status(404).send("Teacher record not found.");
+  }
+  if (!teacherRec.profile_photo_url) {
+    return res.status(400).send("Please upload a profile photo first.");
   }
   const teacherData = {
     ...teacherRec,
@@ -1770,9 +2124,15 @@ app.get("/api/teacher-id-cards/download/:teacherId", async (req, res) => {
     const infoDoc = await SchoolInfoModel.findOne({
       id: "default_school_info",
     });
-    const sigDoc = await SignatureModel.findOne({ id: "default_signature" });
-    const schoolInfo = infoDoc || initialSchoolInfo;
+    const sigDoc = await SignatureModel.findOne({ is_current: true });
+    const schoolInfo = infoDoc ? infoDoc.toObject() : { ...initialSchoolInfo };
     const principalSignature = sigDoc ? sigDoc.signature : null;
+    if (sigDoc && sigDoc.principal) {
+      const pUser = await UserModel.findOne({ id: sigDoc.principal }).lean();
+      if (pUser) {
+        schoolInfo.principal_name = `${pUser.first_name} ${pUser.last_name}`;
+      }
+    }
 
     await drawTeacherIdCardPage(
       pdfDoc,
@@ -1798,21 +2158,35 @@ app.get("/api/teacher-id-cards/download/:teacherId", async (req, res) => {
 });
 
 app.get("/api/teachers", async (req, res) => {
-  const profiles = await TeacherProfileModel.find().lean();
+  const teachers = await UserModel.find({
+    role: "teacher",
+    is_active: { $ne: false },
+  }).lean();
   const joinedTeachers = [];
-  for (const profile of profiles) {
-    const user = await UserModel.findOne({ id: profile.id }).lean();
-    if (user && user.is_active !== false) {
-      joinedTeachers.push({
-        ...profile,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        email: user.email,
-        preferred_language: user.preferred_language,
-        is_active: user.is_active,
-        created_at: user.created_at,
+  for (const t of teachers) {
+    let profile = await TeacherProfileModel.findOne({ id: t.id }).lean();
+    if (!profile) {
+      const newProf = await TeacherProfileModel.create({
+        id: t.id,
+        qualifications: "",
+        experience_years: 0,
+        curriculum_notes: "",
+        assigned_classes: [],
+        assigned_courses: [],
+        profile_photo_url: null,
+        staff_signature: null,
       });
+      profile = newProf.toObject();
     }
+    joinedTeachers.push({
+      ...profile,
+      first_name: t.first_name,
+      last_name: t.last_name,
+      email: t.email,
+      preferred_language: t.preferred_language,
+      is_active: t.is_active,
+      created_at: t.created_at,
+    });
   }
   return res.json(joinedTeachers);
 });
@@ -1884,6 +2258,8 @@ app.put("/api/teachers/:id", async (req, res) => {
     curriculum_notes,
     assigned_classes,
     assigned_courses,
+    profile_photo_url,
+    staff_signature,
   } = req.body;
   const profile = await TeacherProfileModel.findOne({ id });
   if (!profile) {
@@ -1905,6 +2281,9 @@ app.put("/api/teachers/:id", async (req, res) => {
     profile.assigned_classes = assigned_classes;
   if (assigned_courses !== undefined)
     profile.assigned_courses = assigned_courses;
+  if (profile_photo_url !== undefined)
+    profile.profile_photo_url = profile_photo_url;
+  if (staff_signature !== undefined) profile.staff_signature = staff_signature;
   await profile.save();
   return res.json({
     ...profile.toObject(),
@@ -2201,7 +2580,7 @@ app.post("/api/id-cards/update-photo", async (req, res) => {
       .status(400)
       .json({ error: "Student ID and profile photo are required." });
   }
-  const sigDoc = await SignatureModel.findOne({ id: "default_signature" });
+  const sigDoc = await SignatureModel.findOne({ is_current: true });
   const principalSignature = sigDoc ? sigDoc.signature : null;
   if (!principalSignature) {
     return res.status(400).json({
@@ -2498,6 +2877,169 @@ You must return a structured JSON response matching this schema:
       .status(500)
       .json({ error: error.message || "Failed to analyze teacher profile." });
   }
+});
+
+// Admin Principal CRUD Endpoints
+app.get("/api/admin/principals", authMiddleware, async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ error: "Unauthorized. Admin access only." });
+  }
+  const principals = await SignatureModel.find().lean();
+  const joined = [];
+  for (const p of principals) {
+    const u = await UserModel.findOne({ id: p.principal }).lean();
+    joined.push({
+      ...p,
+      first_name: u ? u.first_name : "N/A",
+      last_name: u ? u.last_name : "N/A",
+      email: u ? u.email : "N/A",
+    });
+  }
+  return res.json(joined);
+});
+
+app.post("/api/admin/principals", authMiddleware, async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ error: "Unauthorized. Admin access only." });
+  }
+  const { principal, year, is_current } = req.body;
+  const targetUser = await UserModel.findOne({ id: principal }).lean();
+  if (!targetUser) {
+    return res.status(400).json({ error: "Linked user account not found." });
+  }
+
+  const id = `sig_${Math.random().toString(36).substring(2, 11)}`;
+
+  if (is_current) {
+    await SignatureModel.updateMany({}, { $set: { is_current: false } });
+  }
+
+  const newPrincipal = await SignatureModel.create({
+    id,
+    principal,
+    first_name: targetUser.first_name,
+    last_name: targetUser.last_name,
+    name: `${targetUser.first_name} ${targetUser.last_name}`,
+    year,
+    is_current: !!is_current,
+    signature: null,
+  });
+
+  return res.status(201).json(newPrincipal.toObject());
+});
+
+app.post(
+  "/api/admin/principals/create-with-user",
+  authMiddleware,
+  async (req, res) => {
+    if (req.user.role !== "admin") {
+      return res
+        .status(403)
+        .json({ error: "Unauthorized. Admin access only." });
+    }
+    const { first_name, last_name, email, password, year, is_current } =
+      req.body;
+    if (!first_name || !last_name || !email || !password || !year) {
+      return res.status(400).json({ error: "All fields are required." });
+    }
+    const existing = await UserModel.findOne({
+      email: { $regex: new RegExp("^" + email + "$", "i") },
+    });
+    if (existing) {
+      return res
+        .status(400)
+        .json({ error: "Email address already registered." });
+    }
+    const userId = `usr_${Math.random().toString(36).substring(2, 11)}`;
+    const newUser = await UserModel.create({
+      id: userId,
+      first_name,
+      last_name,
+      email,
+      role: "principal",
+      password: hashPassword(password),
+      preferred_language: "en",
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    const id = `sig_${Math.random().toString(36).substring(2, 11)}`;
+
+    if (is_current) {
+      await SignatureModel.updateMany({}, { $set: { is_current: false } });
+    }
+
+    const newPrincipal = await SignatureModel.create({
+      id,
+      principal: userId,
+      first_name,
+      last_name,
+      name: `${first_name} ${last_name}`,
+      year,
+      is_current: !!is_current,
+      signature: null,
+    });
+
+    return res.status(201).json(newPrincipal.toObject());
+  },
+);
+
+app.put("/api/admin/principals/:id", authMiddleware, async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ error: "Unauthorized. Admin access only." });
+  }
+  const { id } = req.params;
+  const { principal, year, is_current, signature } = req.body;
+  const targetUser = await UserModel.findOne({ id: principal }).lean();
+  if (!targetUser) {
+    return res.status(400).json({ error: "Linked user account not found." });
+  }
+
+  if (is_current) {
+    await SignatureModel.updateMany(
+      { id: { $ne: id } },
+      { $set: { is_current: false } },
+    );
+  }
+
+  const updateFields = {
+    principal,
+    first_name: targetUser.first_name,
+    last_name: targetUser.last_name,
+    name: `${targetUser.first_name} ${targetUser.last_name}`,
+    year,
+    is_current: !!is_current,
+  };
+
+  if (signature !== undefined) {
+    updateFields.signature = signature;
+  }
+
+  const updated = await SignatureModel.findOneAndUpdate(
+    { id },
+    { $set: updateFields },
+    { new: true },
+  );
+
+  if (!updated) {
+    return res.status(404).json({ error: "Principal record not found." });
+  }
+
+  return res.json(updated.toObject());
+});
+
+app.delete("/api/admin/principals/:id", authMiddleware, async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ error: "Unauthorized. Admin access only." });
+  }
+  const { id } = req.params;
+  const deleted = await SignatureModel.findOneAndDelete({ id });
+  if (!deleted) {
+    return res.status(404).json({ error: "Principal record not found." });
+  }
+
+  return res.json({ success: true });
 });
 
 // Serve frontend assets

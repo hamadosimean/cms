@@ -1,5 +1,7 @@
 import React, { useRef } from "react";
 import SchoolGeneralInfoPanel from "./pages/admin/SchoolGeneralInfoPanel";
+import PrincipalsRegistryPanel from "./pages/admin/PrincipalsRegistryPanel";
+import PrincipalModal from "./components/modals/PrincipalModal";
 import { motion, AnimatePresence } from "motion/react";
 import { ImageCropperModal } from "./components/ImageCropperModal";
 import { SignaturePad } from "./components/SignaturePad";
@@ -13,6 +15,7 @@ import Sidebar from "./components/layout/Sidebar";
 import OverviewTab from "./pages/admin/OverviewTab";
 import AdmissionsTab from "./pages/admin/AdmissionsTab";
 import IdCardsTab from "./pages/admin/IdCardsTab";
+import TeacherCardsTab from "./pages/admin/TeacherCardsTab";
 import AdminsTab from "./pages/admin/AdminsTab";
 import StudentsDirTab from "./pages/admin/StudentsDirTab";
 import TeachersTab from "./pages/admin/TeachersTab";
@@ -20,6 +23,7 @@ import ClassesTab from "./pages/admin/ClassesTab";
 import AuditLogsTab from "./pages/admin/AuditLogsTab";
 import TeacherOnboardingTab from "./pages/teacher/TeacherOnboardingTab";
 import TeacherAllocationsTab from "./pages/teacher/TeacherAllocationsTab";
+import TeacherIdCardTab from "./pages/teacher/TeacherIdCardTab";
 import ProfileTab from "./pages/shared/ProfileTab";
 import StudentApplicationTab from "./pages/student/StudentApplicationTab";
 import StudentIdCardTab from "./pages/student/StudentIdCardTab";
@@ -593,6 +597,13 @@ export default function App() {
                     />
                   )}
 
+                  {activeSidebarTab === "teacher_cards" && (
+                    <TeacherCardsTab
+                      lang={lang}
+                      principalSignature={principalSignature}
+                    />
+                  )}
+
                   {activeSidebarTab === "admins" && (
                     <AdminsTab
                       lang={lang}
@@ -692,10 +703,13 @@ export default function App() {
                   )}
 
                   {activeSidebarTab === "overview" && (
-                    <SchoolGeneralInfoPanel />
+                    <>
+                      <SchoolGeneralInfoPanel />
+                      {user.role === "admin" && <PrincipalsRegistryPanel />}
+                    </>
                   )}
 
-                  {activeSidebarTab === "overview" && (
+                  {activeSidebarTab === "overview" && user.role === "principal" && (
                     <SignaturePad
                       onSave={handleSaveSignature}
                       initialSignatureUrl={principalSignature}
@@ -778,6 +792,13 @@ export default function App() {
                       teacherProfile={teacherProfile}
                     />
                   )}
+
+                  {activeSidebarTab === "id_card" && (
+                    <TeacherIdCardTab
+                      lang={lang}
+                      getTranslation={getTranslation}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -790,6 +811,7 @@ export default function App() {
       <ClassModal />
       <DocumentViewerModal />
       <AdminModal />
+      <PrincipalModal />
       <CardEditModal />
       <CardViewModal />
       <AiStudentModal />
