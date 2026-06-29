@@ -1,0 +1,6 @@
+{
+  "name": "School Management & Enrollment System",
+  "description": "A multilingual, role-based platform for school enrollment, administrative review, interactive analytics, dynamic student ID card generation, and teacher allocation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
