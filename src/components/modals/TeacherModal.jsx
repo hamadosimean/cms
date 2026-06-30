@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "motion/react";
-import { X } from "lucide-react";
+import { X, User as UserIcon, ShieldAlert, Download } from "lucide-react";
 import { useAppStore } from "../../store/useAppStore";
 import { getTranslation } from "../../translations";
 import { useAppHandlers } from "../../hooks/useAppHandlers";
@@ -116,6 +116,8 @@ export const TeacherModal = () => {
     setShowCommandPalette,
     commandPaletteQuery,
     setCommandPaletteQuery,
+    schoolInfo,
+    principalSignature,
   } = store;
   // We spread the handlers so they are available in the scope
   const {
@@ -138,6 +140,37 @@ export const TeacherModal = () => {
     getFilteredCommandPaletteItems,
     displayStudents,
   } = handlers;
+
+  const currentTeacher = editingTeacherId ? adminTeachers.find(t => t.id === editingTeacherId) : null;
+
+  const handleAdminTeacherPhotoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file && currentTeacher) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        store.setCroppingImage(reader.result);
+        store.setOnCropComplete(() => async (cropped) => {
+          try {
+            const res = await fetch(`/api/teachers/${currentTeacher.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ profile_photo_url: cropped }),
+            });
+            if (res.ok) {
+              setToast({ show: true, message: "Teacher photo updated successfully", type: "success" });
+              handlers.fetchPortalData();
+            } else {
+              setToast({ show: true, message: "Failed to save photo", type: "error" });
+            }
+          } catch (err) {
+            setToast({ show: true, message: "Failed to upload photo", type: "error" });
+          }
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <>
       {showTeacherModal && (
@@ -316,6 +349,101 @@ export const TeacherModal = () => {
                   })}
                 </div>
               </div>
+
+              {/* Teacher ID Card Preview */}
+              {currentTeacher && schoolInfo && (
+                <div className="space-y-3 pt-4 border-t border-slate-100">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    {lang === "fr"
+                      ? "Aperçu de la carte"
+                      : "Digital ID Card Live Preview"}
+                  </label>
+
+                  <div className="mt-4 p-5 rounded-2xl border border-slate-200/80 bg-slate-50 flex flex-col justify-between gap-4 shadow-sm hover:border-slate-300 transition relative overflow-hidden shrink-0 mx-auto max-w-sm">
+                    {/* Status Badge */}
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={`px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider rounded-full border ${
+                          currentTeacher.profile_photo_url
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-amber-50 text-amber-700 border-amber-200"
+                        }`}
+                      >
+                        {currentTeacher.profile_photo_url
+                          ? lang === "fr"
+                            ? "Photo Téléversée"
+                            : "Photo Uploaded / Active"
+                          : lang === "fr"
+                            ? "Photo Manquante"
+                            : "Photo Missing"}
+                      </span>
+
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        Staff ID: {currentTeacher.id?.substring(0, 8).toUpperCase()}
+                      </span>
+                    </div>
+
+                    {/* Core details */}
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-18 rounded-lg bg-slate-200 border border-slate-300 overflow-hidden shrink-0 shadow-sm flex items-center justify-center">
+                        {currentTeacher.profile_photo_url ? (
+                          <img
+                            src={currentTeacher.profile_photo_url}
+                            alt="Teacher profile"
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <UserIcon className="w-6 h-6 text-slate-400" />
+                        )}
+                      </div>
+
+                      <div className="text-left space-y-1">
+                        <h4 className="font-bold text-sm text-slate-800 leading-tight">
+                          {currentTeacher.first_name} {currentTeacher.last_name}
+                        </h4>
+                        <p className="text-xs text-slate-500 font-medium">
+                          {currentTeacher.email}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">
+                          {currentTeacher.qualifications || (lang === "fr" ? "Sans Diplôme" : "No qualifications entered")}
+                        </p>
+                        <p className="text-[10px] text-indigo-600 font-semibold bg-indigo-50 border border-indigo-200/50 rounded-md px-1.5 py-0.5 inline-block">
+                          {lang === "fr" ? "Expérience" : "Experience"}:{" "}
+                          <span className="font-bold font-mono">{currentTeacher.experience_years || 0} {lang === "fr" ? "ans" : "years"}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-200/60">
+                      <div>
+                        <input type="file" id="teacher-photo-admin" accept="image/*" className="hidden" onChange={handleAdminTeacherPhotoUpload} />
+                        <label htmlFor="teacher-photo-admin" className="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer border border-slate-300">
+                          {lang === "fr" ? "Changer la Photo" : "Update Photo"}
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {currentTeacher.profile_photo_url ? (
+                        <a
+                          href={`/api/teacher-id-cards/download/${currentTeacher.id}?lang=${lang}`}
+                          download={`Teacher_ID_Card_${currentTeacher.last_name}.pdf`}
+                          className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition flex items-center gap-1.5 min-h-10 cursor-pointer decoration-transparent font-sans"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>{lang === "fr" ? "Télécharger PDF" : "Download PDF"}</span>
+                        </a>
+                      ) : (
+                        <div className="flex items-center gap-1 text-amber-600 text-xs font-bold">
+                          <ShieldAlert className="w-4 h-4 shrink-0" />
+                          <span>{lang === "fr" ? "Photo requise" : "Photo required for download"}</span>
+                        </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Submit Modal */}
               <div className="pt-4 border-t border-slate-100 flex justify-end gap-2 shrink-0">

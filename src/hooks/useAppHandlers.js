@@ -64,6 +64,12 @@ export const useAppHandlers = () => {
     setLastSchoolName,
     lastGeneralGrade,
     setLastGeneralGrade,
+    parentFullName,
+    setParentFullName,
+    parentPhone,
+    setParentPhone,
+    parentPlaceOfLiving,
+    setParentPlaceOfLiving,
     transcriptFile,
     setTranscriptFile,
     transcriptBase64,
@@ -172,6 +178,12 @@ export const useAppHandlers = () => {
     setFormStudentGrade,
     formStudentLang,
     setFormStudentLang,
+    formStudentParentName,
+    setFormStudentParentName,
+    formStudentParentPhone,
+    setFormStudentParentPhone,
+    formStudentParentLiving,
+    setFormStudentParentLiving,
     showAdminModal,
     setShowAdminModal,
     formAdminFirst,
@@ -212,6 +224,12 @@ export const useAppHandlers = () => {
     setProfileLang,
     profileEmail,
     setProfileEmail,
+    profileParentName,
+    setProfileParentName,
+    profileParentPhone,
+    setProfileParentPhone,
+    profileParentLiving,
+    setProfileParentLiving,
     showClassModal,
     setShowClassModal,
     editingClassId,
@@ -230,6 +248,8 @@ export const useAppHandlers = () => {
     setAssignTeacherId,
     assignTopic,
     setAssignTopic,
+    setAssignDayOfWeek,
+    setAssignTimeSlot,
     principalSignature,
     setPrincipalSignature,
     showCommandPalette,
@@ -369,6 +389,9 @@ export const useAppHandlers = () => {
       setProfileLastName(user.last_name);
       setProfileLang(user.preferred_language);
       setProfileEmail(user.email);
+      setProfileParentName(user.parent_full_name || "");
+      setProfileParentPhone(user.parent_phone || "");
+      setProfileParentLiving(user.parent_place_of_living || "");
       fetchPortalData();
     }
   }, [user]);
@@ -391,6 +414,9 @@ export const useAppHandlers = () => {
         targetClass,
         lastSchoolName,
         lastGeneralGrade,
+        parentFullName,
+        parentPhone,
+        parentPlaceOfLiving,
         transcriptFile,
         receiptFile,
         recommendationFile,
@@ -405,6 +431,9 @@ export const useAppHandlers = () => {
     targetClass,
     lastSchoolName,
     lastGeneralGrade,
+    parentFullName,
+    parentPhone,
+    parentPlaceOfLiving,
     transcriptFile,
     receiptFile,
     recommendationFile,
@@ -452,10 +481,13 @@ export const useAppHandlers = () => {
                 ? String(apps[0].last_general_grade)
                 : "",
             );
+            setParentFullName(apps[0].parent_full_name || "");
+            setParentPhone(apps[0].parent_phone || "");
+            setParentPlaceOfLiving(apps[0].parent_place_of_living || "");
             setTranscriptFile(apps[0].transcript_file_name);
             setReceiptFile(apps[0].payment_receipt_name);
             setRecommendationFile(apps[0].recommendation_letter_name);
-            setWizardStep(4); // Go straight to application outcome step
+            setWizardStep(5); // Go straight to application outcome step
             hasLoadedStudentDraftRef.current = user.id;
           } else {
             setStudentApplication(null);
@@ -471,6 +503,9 @@ export const useAppHandlers = () => {
                     setLastSchoolName(draft.lastSchoolName);
                   if (draft.lastGeneralGrade)
                     setLastGeneralGrade(draft.lastGeneralGrade);
+                  if (draft.parentFullName) setParentFullName(draft.parentFullName);
+                  if (draft.parentPhone) setParentPhone(draft.parentPhone);
+                  if (draft.parentPlaceOfLiving) setParentPlaceOfLiving(draft.parentPlaceOfLiving);
                   if (draft.transcriptFile)
                     setTranscriptFile(draft.transcriptFile);
                   if (draft.receiptFile) setReceiptFile(draft.receiptFile);
@@ -784,6 +819,9 @@ export const useAppHandlers = () => {
     setTargetClass("Grade 10-A");
     setLastSchoolName("");
     setLastGeneralGrade("");
+    setParentFullName("");
+    setParentPhone("");
+    setParentPlaceOfLiving("");
     setTranscriptFile(null);
     setReceiptFile(null);
     setRecommendationFile(null);
@@ -887,6 +925,9 @@ export const useAppHandlers = () => {
           target_class: targetClass,
           last_school_name: lastSchoolName,
           last_general_grade: gradeVal,
+          parent_full_name: parentFullName,
+          parent_phone: parentPhone,
+          parent_place_of_living: parentPlaceOfLiving,
           transcript_file_name: transcriptFile,
           payment_receipt_name: receiptFile,
           recommendation_letter_name: recommendationFile,
@@ -901,7 +942,7 @@ export const useAppHandlers = () => {
         setTranscriptBase64(null);
         setReceiptBase64(null);
         setRecommendationBase64(null);
-        setWizardStep(4);
+        setWizardStep(5);
         showNotification(
           getTranslation("applicationSubmittedSuccess", lang),
           "success",
@@ -1760,7 +1801,7 @@ export const useAppHandlers = () => {
     }
     const studentIds = generatedCards.map((c) => c.student_id);
     try {
-      const res = await fetch("/api/id-cards/batch-download", {
+      const res = await fetch(`/api/id-cards/batch-download?lang=${lang}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ student_ids: studentIds }),
@@ -1804,6 +1845,9 @@ export const useAppHandlers = () => {
           first_name: profileFirstName,
           last_name: profileLastName,
           preferred_language: profileLang,
+          parent_full_name: profileParentName,
+          parent_phone: profileParentPhone,
+          parent_place_of_living: profileParentLiving,
         }),
       });
       if (res.ok) {
@@ -1871,6 +1915,8 @@ export const useAppHandlers = () => {
         setFormClassSubjects([]);
         setAssignTeacherId("");
         setAssignTopic("");
+        setAssignDayOfWeek("");
+        setAssignTimeSlot("");
         fetchPortalData();
       } else {
         showNotification("Operation failed", "error");
@@ -2162,6 +2208,9 @@ export const useAppHandlers = () => {
     setFormStudentSchool("");
     setFormStudentGrade("15.0");
     setFormStudentLang("en");
+    setFormStudentParentName("");
+    setFormStudentParentPhone("");
+    setFormStudentParentLiving("");
   };
   const handleEditStudentClick = (student) => {
     setEditingStudentId(student.id);
@@ -2172,6 +2221,9 @@ export const useAppHandlers = () => {
     setFormStudentSchool(student.last_school_name || "");
     setFormStudentGrade((student.last_general_grade ?? 15.0).toString());
     setFormStudentLang(student.preferred_language || "en");
+    setFormStudentParentName(student.parent_full_name || "");
+    setFormStudentParentPhone(student.parent_phone || "");
+    setFormStudentParentLiving(student.parent_place_of_living || "");
     setShowStudentModal(true);
   };
   const handleSaveStudent = async (e) => {
@@ -2198,6 +2250,9 @@ export const useAppHandlers = () => {
         last_school_name: formStudentSchool,
         last_general_grade: Number(formStudentGrade) || 15.0,
         preferred_language: formStudentLang,
+        parent_full_name: formStudentParentName,
+        parent_phone: formStudentParentPhone,
+        parent_place_of_living: formStudentParentLiving,
       };
       const res = await fetch(url, {
         method,

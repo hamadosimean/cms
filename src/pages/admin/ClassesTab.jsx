@@ -39,8 +39,8 @@ export default function ClassesTab({
           }}
           className="px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white transition flex items-center gap-1 min-h-11 cursor-pointer"
         >
-          <Plus className="w-4 h-4" />
-          <span>{lang === "fr" ? "Ajouter une classe" : "Add Class"}</span>
+          <Plus className="w-4 h-4 shrink-0" />
+          <span className="hidden sm:inline">{lang === "fr" ? "Ajouter une classe" : "Add Class"}</span>
         </button>
       </div>
 
@@ -133,9 +133,16 @@ export default function ClassesTab({
                                 <span className="font-semibold text-slate-900 block truncate">
                                   {t.teacher_name}
                                 </span>
-                                <span className="text-[10px] text-emerald-600 font-medium block truncate">
-                                  {t.topic}
-                                </span>
+                                <div className="flex gap-2 items-center">
+                                  <span className="text-[10px] text-emerald-600 font-medium block truncate">
+                                    {t.topic}
+                                  </span>
+                                  {(t.day_of_week || t.time_slot) && (
+                                    <span className="text-[9px] text-slate-500 bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded-sm">
+                                      {t.day_of_week} {t.time_slot ? `(${t.time_slot})` : ''}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                               <button
                                 type="button"

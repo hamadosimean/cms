@@ -19,6 +19,12 @@ export default function StudentApplicationTab({
   setLastSchoolName,
   lastGeneralGrade,
   setLastGeneralGrade,
+  parentFullName,
+  setParentFullName,
+  parentPhone,
+  setParentPhone,
+  parentPlaceOfLiving,
+  setParentPlaceOfLiving,
   showNotification,
   transcriptFile,
   setTranscriptFile,
@@ -51,17 +57,18 @@ export default function StudentApplicationTab({
             </h3>
           </div>
           <span className="font-mono text-xs text-slate-400">
-            Step {wizardStep <= 3 ? wizardStep : 4} of 4
+            Step {wizardStep <= 4 ? wizardStep : 5} of 5
           </span>
         </div>
 
         {/* Step wizard indicator tracks */}
-        <div className="grid grid-cols-4 border-b border-slate-100 bg-slate-50 text-center">
+        <div className="grid grid-cols-5 border-b border-slate-100 bg-slate-50 text-center">
           {[
             { step: 1, label: getTranslation("wizardStepInfo", lang) },
-            { step: 2, label: getTranslation("wizardStepDocs", lang) },
-            { step: 3, label: lang === "fr" ? "Vérification" : "Verification" },
-            { step: 4, label: getTranslation("wizardStepStatus", lang) },
+            { step: 2, label: getTranslation("wizardStepParent", lang) },
+            { step: 3, label: getTranslation("wizardStepDocs", lang) },
+            { step: 4, label: lang === "fr" ? "Vérification" : "Verification" },
+            { step: 5, label: getTranslation("wizardStepStatus", lang) },
           ].map((item) => (
             <div
               key={item.step}
@@ -73,10 +80,10 @@ export default function StudentApplicationTab({
                     : "text-slate-400"
               }`}
             >
-              <span className="inline-block mr-1">
+              <span className="inline-block sm:mr-1">
                 {wizardStep > item.step ? "✓" : item.step}.
               </span>
-              {item.label}
+              <span className="hidden sm:inline">{item.label}</span>
             </div>
           ))}
         </div>
@@ -185,7 +192,7 @@ export default function StudentApplicationTab({
                   }}
                   className="px-6 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 touch-manipulation min-h-11"
                 >
-                  <span>Next: Document Upload</span>
+                  <span>Next: Parent Info</span>
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
@@ -193,6 +200,80 @@ export default function StudentApplicationTab({
           )}
 
           {wizardStep === 2 && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
+                    {getTranslation("parentFullName", lang)}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={parentFullName}
+                    onChange={(e) => setParentFullName(e.target.value)}
+                    placeholder="Parent Full Name"
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
+                    {getTranslation("parentPhone", lang)}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={parentPhone}
+                    onChange={(e) => setParentPhone(e.target.value)}
+                    placeholder="Phone Number"
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 transition"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
+                  {getTranslation("parentPlaceOfLiving", lang)}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={parentPlaceOfLiving}
+                  onChange={(e) => setParentPlaceOfLiving(e.target.value)}
+                  placeholder="Place of Living"
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 transition"
+                />
+              </div>
+              <div className="pt-6 border-t border-slate-100 flex justify-between">
+                <button
+                  onClick={() => setWizardStep(1)}
+                  className="px-5 py-2 text-xs font-semibold uppercase text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={() => {
+                    if (
+                      !parentFullName ||
+                      !parentPhone ||
+                      !parentPlaceOfLiving
+                    ) {
+                      showNotification(
+                        "Please fill in parent details to advance.",
+                        "error",
+                      );
+                      return;
+                    }
+                    setWizardStep(3);
+                  }}
+                  className="px-6 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 touch-manipulation min-h-11"
+                >
+                  <span>Next: Document Upload</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {wizardStep === 3 && (
             <div className="space-y-6">
               <p className="text-xs text-slate-500 italic">
                 {lang === "fr"
@@ -369,7 +450,7 @@ export default function StudentApplicationTab({
 
               <div className="pt-6 border-t border-slate-100 flex justify-between">
                 <button
-                  onClick={() => setWizardStep(1)}
+                  onClick={() => setWizardStep(2)}
                   className="px-5 py-2 text-xs font-semibold uppercase text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200"
                 >
                   Back
@@ -389,7 +470,7 @@ export default function StudentApplicationTab({
                       );
                       return;
                     }
-                    setWizardStep(3);
+                    setWizardStep(4);
                   }}
                   className="px-6 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 touch-manipulation shadow-md cursor-pointer"
                 >
@@ -400,8 +481,8 @@ export default function StudentApplicationTab({
             </div>
           )}
 
-          {/* Step 3: Review and Verify Info */}
-          {wizardStep === 3 && (
+          {/* Step 4: Review and Verify Info */}
+          {wizardStep === 4 && (
             <div className="space-y-6">
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs">
                 {lang === "fr"
@@ -410,7 +491,7 @@ export default function StudentApplicationTab({
               </div>
 
               <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-150 bg-slate-50/50">
-                <div className="px-5 py-4 grid grid-cols-3 gap-4 text-xs">
+                <div className="px-5 py-4 flex flex-col sm:grid sm:grid-cols-3 gap-1 sm:gap-4 text-xs">
                   <span className="font-bold text-slate-500 uppercase">
                     {getTranslation("targetClass", lang)}
                   </span>
@@ -418,7 +499,7 @@ export default function StudentApplicationTab({
                     {targetClass}
                   </span>
                 </div>
-                <div className="px-5 py-4 grid grid-cols-3 gap-4 text-xs">
+                <div className="px-5 py-4 flex flex-col sm:grid sm:grid-cols-3 gap-1 sm:gap-4 text-xs">
                   <span className="font-bold text-slate-500 uppercase">
                     {getTranslation("lastSchoolName", lang)}
                   </span>
@@ -426,7 +507,7 @@ export default function StudentApplicationTab({
                     {lastSchoolName}
                   </span>
                 </div>
-                <div className="px-5 py-4 grid grid-cols-3 gap-4 text-xs">
+                <div className="px-5 py-4 flex flex-col sm:grid sm:grid-cols-3 gap-1 sm:gap-4 text-xs">
                   <span className="font-bold text-slate-500 uppercase">
                     {getTranslation("lastGeneralGrade", lang)}
                   </span>
@@ -434,7 +515,31 @@ export default function StudentApplicationTab({
                     {lastGeneralGrade} / 20
                   </span>
                 </div>
-                <div className="px-5 py-4 grid grid-cols-3 gap-4 text-xs">
+                <div className="px-5 py-4 flex flex-col sm:grid sm:grid-cols-3 gap-1 sm:gap-4 text-xs">
+                  <span className="font-bold text-slate-500 uppercase">
+                    {getTranslation("parentFullName", lang)}
+                  </span>
+                  <span className="col-span-2 text-slate-800 font-semibold">
+                    {parentFullName}
+                  </span>
+                </div>
+                <div className="px-5 py-4 flex flex-col sm:grid sm:grid-cols-3 gap-1 sm:gap-4 text-xs">
+                  <span className="font-bold text-slate-500 uppercase">
+                    {getTranslation("parentPhone", lang)}
+                  </span>
+                  <span className="col-span-2 text-slate-800 font-semibold">
+                    {parentPhone}
+                  </span>
+                </div>
+                <div className="px-5 py-4 flex flex-col sm:grid sm:grid-cols-3 gap-1 sm:gap-4 text-xs">
+                  <span className="font-bold text-slate-500 uppercase">
+                    {getTranslation("parentPlaceOfLiving", lang)}
+                  </span>
+                  <span className="col-span-2 text-slate-800 font-semibold">
+                    {parentPlaceOfLiving}
+                  </span>
+                </div>
+                <div className="px-5 py-4 flex flex-col sm:grid sm:grid-cols-3 gap-1 sm:gap-4 text-xs">
                   <span className="font-bold text-slate-500 uppercase">
                     {getTranslation("transcriptFile", lang)}
                   </span>
@@ -442,7 +547,7 @@ export default function StudentApplicationTab({
                     {transcriptFile}
                   </span>
                 </div>
-                <div className="px-5 py-4 grid grid-cols-3 gap-4 text-xs">
+                <div className="px-5 py-4 flex flex-col sm:grid sm:grid-cols-3 gap-1 sm:gap-4 text-xs">
                   <span className="font-bold text-slate-500 uppercase">
                     {getTranslation("receiptFile", lang)}
                   </span>
@@ -450,7 +555,7 @@ export default function StudentApplicationTab({
                     {receiptFile}
                   </span>
                 </div>
-                <div className="px-5 py-4 grid grid-cols-3 gap-4 text-xs">
+                <div className="px-5 py-4 flex flex-col sm:grid sm:grid-cols-3 gap-1 sm:gap-4 text-xs">
                   <span className="font-bold text-slate-500 uppercase">
                     {getTranslation("recommendationFile", lang)}
                   </span>
@@ -462,7 +567,7 @@ export default function StudentApplicationTab({
 
               <div className="pt-6 border-t border-slate-100 flex justify-between">
                 <button
-                  onClick={() => setWizardStep(2)}
+                  onClick={() => setWizardStep(3)}
                   className="px-5 py-2 text-xs font-semibold uppercase text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 cursor-pointer"
                 >
                   Back
@@ -477,7 +582,7 @@ export default function StudentApplicationTab({
             </div>
           )}
 
-          {wizardStep === 4 && studentApplication && (
+          {wizardStep === 5 && studentApplication && (
             <div className="space-y-6">
               {/* Main Admission Notification Card based on Evaluated Status */}
               {studentApplication.status === "pending" && (

@@ -1,9 +1,23 @@
 import React, { useState } from "react";
-import { GraduationCap, Download, AlertTriangle, User as UserIcon, Search, ArrowUpDown, ShieldAlert } from "lucide-react";
+import { GraduationCap, Download, AlertTriangle, User as UserIcon, Search, ArrowUpDown, ShieldAlert, Edit3 } from "lucide-react";
 import { useAppStore } from "../../store/useAppStore";
 
 export default function TeacherCardsTab({ lang, principalSignature }) {
-  const { adminTeachers, schoolInfo } = useAppStore();
+  const store = useAppStore();
+  const { adminTeachers, schoolInfo } = store;
+
+  const handleEditTeacherClick = (teacher) => {
+    store.setEditingTeacherId(teacher.id);
+    store.setFormTeacherFirst(teacher.first_name);
+    store.setFormTeacherLast(teacher.last_name);
+    store.setFormTeacherEmail(teacher.email);
+    store.setFormTeacherQual(teacher.qualifications || "");
+    store.setFormTeacherExp(teacher.experience_years || 0);
+    store.setFormTeacherNotes(teacher.curriculum_notes || "");
+    store.setFormTeacherClasses(teacher.assigned_classes || []);
+    store.setFormTeacherCourses(teacher.assigned_courses || []);
+    store.setShowTeacherModal(true);
+  };
 
   // Search & Filter local states
   const [searchQuery, setSearchQuery] = useState("");
@@ -204,19 +218,28 @@ export default function TeacherCardsTab({ lang, principalSignature }) {
 
                   {/* Actions */}
                   <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200/60">
+                    <button
+                      onClick={() => handleEditTeacherClick(teacher)}
+                      className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold uppercase tracking-wider transition flex items-center gap-1 min-h-10 cursor-pointer"
+                      title="Edit teacher card info"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+                      <span className="hidden sm:inline">{lang === "fr" ? "Modifier" : "Edit"}</span>
+                    </button>
+
                     {hasPhoto ? (
                       <a
-                        href={`/api/teacher-id-cards/download/${teacher.id}`}
+                        href={`/api/teacher-id-cards/download/${teacher.id}?lang=${lang}`}
                         download={`Teacher_ID_Card_${teacher.last_name}.pdf`}
                         className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition flex items-center gap-1.5 min-h-10 cursor-pointer decoration-transparent font-sans"
                       >
                         <Download className="w-3.5 h-3.5" />
-                        <span>{lang === "fr" ? "Télécharger PDF" : "Download PDF"}</span>
+                        <span className="hidden sm:inline">{lang === "fr" ? "Télécharger PDF" : "Download PDF"}</span>
                       </a>
                     ) : (
                       <div className="flex items-center gap-1 text-amber-600 text-xs font-bold">
                         <ShieldAlert className="w-4 h-4 shrink-0" />
-                        <span>{lang === "fr" ? "Photo requise" : "Photo required for download"}</span>
+                        <span className="hidden sm:inline">{lang === "fr" ? "Photo requise" : "Photo required"}</span>
                       </div>
                     )}
                   </div>

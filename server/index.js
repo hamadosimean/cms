@@ -8,6 +8,7 @@ import { createServer as createViteServer } from "vite";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import QRCode from "qrcode";
 import dotenv from "dotenv";
+
 dotenv.config();
 import crypto from "crypto";
 
@@ -81,6 +82,7 @@ import {
   ClassItemModel,
   SchoolInfoModel,
   SignatureModel,
+  ParentModel,
 } from "./models.js";
 
 let geminiClient = null;
@@ -494,26 +496,49 @@ async function seedDatabase() {
   }
 }
 
-// Helper to simulate email alerts in Console
-function simulateEmailAlert(user, subject, body) {
-  emailjs.sendForm(SERVICE_ID, TEMPLATE_ID, form.current, PUBLIC_KEY).then(
-    (result) => {
-      console.log(result.text);
-      setStatus({ type: "success", message: "Message sent successfully!" });
-      form.current.reset();
-    },
-    (error) => {
-      console.log(error.text);
-      setStatus({
-        type: "error",
-        message: "Failed to send message. Please try again.",
+// Helper to send email alerts via EmailJS or simulate in Console
+async function simulateEmailAlert(user, subject, body) {
+  const SERVICE_ID = process.env.VITE_SERVICE_ID || process.env.SERVICE_ID;
+  const TEMPLATE_ID = process.env.VITE_TEMPLATE_ID || process.env.TEMPLATE_ID;
+  const PUBLIC_KEY = process.env.VITE_PUBLIC_KEY || process.env.PUBLIC_KEY;
+
+  if (SERVICE_ID && TEMPLATE_ID && PUBLIC_KEY) {
+    try {
+      const payload = {
+        service_id: SERVICE_ID,
+        template_id: TEMPLATE_ID,
+        user_id: PUBLIC_KEY,
+        template_params: {
+          to_name: `${user.first_name} ${user.last_name}`,
+          to_email: user.email,
+          subject: subject,
+          message: body,
+        }
+      };
+
+      const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
       });
-    },
-  );
+
+      if (response.ok) {
+        console.log(`[EMAIL DISPATCH] Successfully sent email to ${user.email} via EmailJS`);
+      } else {
+        const errorText = await response.text();
+        console.error(`[EMAIL DISPATCH] Failed to send email via EmailJS: ${errorText}`);
+      }
+    } catch (error) {
+      console.error(`[EMAIL DISPATCH] Error calling EmailJS API:`, error.message);
+    }
+  } else {
+    console.log(`[EMAIL DISPATCH] Missing EmailJS credentials, falling back to local simulation.`);
+  }
+
   console.log(`\n======================================================`);
   console.log(`[EMAIL DISPATCH SIMULATOR]`);
   console.log(`To: ${user.first_name} ${user.last_name} <${user.email}>`);
-  console.log(`Language: ${user.preferred_language.toUpperCase()}`);
+  console.log(`Language: ${user.preferred_language?.toUpperCase() || "EN"}`);
   console.log(`Subject: ${subject}`);
   console.log(`------------------------------------------------------`);
   console.log(body);
@@ -643,7 +668,15 @@ app.delete("/api/admins/:id", async (req, res) => {
 });
 
 app.put("/api/auth/profile", async (req, res) => {
-  const { id, first_name, last_name, preferred_language } = req.body;
+  const {
+    id,
+    first_name,
+    last_name,
+    preferred_language,
+    parent_full_name,
+    parent_phone,
+    parent_place_of_living,
+  } = req.body;
   const user = await UserModel.findOne({ id });
   if (!user) {
     return res.status(404).json({ error: "User not found" });
@@ -653,7 +686,28 @@ app.put("/api/auth/profile", async (req, res) => {
   if (preferred_language) user.preferred_language = preferred_language;
   user.updated_at = new Date().toISOString();
   await user.save();
-  return res.json(user.toObject());
+
+  let parent = await ParentModel.findOne({ student_id: id });
+  if (!parent) {
+    parent = await ParentModel.create({
+      id: `parent_${Math.random().toString(36).substring(2, 11)}`,
+      student_id: id,
+      created_at: new Date().toISOString(),
+    });
+  }
+  if (parent_full_name !== undefined) parent.full_name = parent_full_name;
+  if (parent_phone !== undefined) parent.phone = parent_phone;
+  if (parent_place_of_living !== undefined)
+    parent.place_of_living = parent_place_of_living;
+  parent.updated_at = new Date().toISOString();
+  await parent.save();
+
+  const userObj = user.toObject();
+  userObj.parent_full_name = parent.full_name;
+  userObj.parent_phone = parent.phone;
+  userObj.parent_place_of_living = parent.place_of_living;
+
+  return res.json(userObj);
 });
 
 app.get("/api/applications", async (req, res) => {
@@ -670,6 +724,9 @@ app.post("/api/applications", async (req, res) => {
     target_class,
     last_school_name,
     last_general_grade,
+    parent_full_name,
+    parent_phone,
+    parent_place_of_living,
     transcript_file_name,
     payment_receipt_name,
     recommendation_letter_name,
@@ -685,6 +742,22 @@ app.post("/api/applications", async (req, res) => {
   ) {
     return res.status(400).json({ error: "All fields are required." });
   }
+
+  let parent = await ParentModel.findOne({ student_id });
+  if (!parent) {
+    parent = await ParentModel.create({
+      id: `parent_${Math.random().toString(36).substring(2, 11)}`,
+      student_id,
+      created_at: new Date().toISOString(),
+    });
+  }
+  if (parent_full_name !== undefined) parent.full_name = parent_full_name;
+  if (parent_phone !== undefined) parent.phone = parent_phone;
+  if (parent_place_of_living !== undefined)
+    parent.place_of_living = parent_place_of_living;
+  parent.updated_at = new Date().toISOString();
+  await parent.save();
+
   await ApplicationModel.deleteMany({ student_id });
   const newApp = await ApplicationModel.create({
     id: `app_${Math.random().toString(36).substring(2, 11)}`,
@@ -692,6 +765,9 @@ app.post("/api/applications", async (req, res) => {
     target_class,
     last_school_name,
     last_general_grade: Number(last_general_grade),
+    parent_full_name: parent_full_name || "",
+    parent_phone: parent_phone || "",
+    parent_place_of_living: parent_place_of_living || "",
     transcript_file_name: transcript_file_name || "transcript.pdf",
     payment_receipt_name: payment_receipt_name || "receipt.png",
     recommendation_letter_name: recommendation_letter_name || "letter.pdf",
@@ -1208,6 +1284,33 @@ async function drawIdCardPage(
     font: fontHelvetica,
     color: rgb(0.9, 0.94, 1),
   });
+
+  if (schoolInfo.logo_url) {
+    try {
+      const matches = schoolInfo.logo_url.match(
+        /^data:image\/(png|jpeg|jpg);base64,(.+)$/,
+      );
+      if (matches) {
+        const type = matches[1];
+        const base64Data = matches[2];
+        const logoBytes = Buffer.from(base64Data, "base64");
+        let embeddedLogo =
+          type === "png"
+            ? await pdfDoc.embedPng(logoBytes)
+            : await pdfDoc.embedJpg(logoBytes);
+        if (embeddedLogo) {
+          page.drawImage(embeddedLogo, {
+            x: 320,
+            y: 182,
+            width: 40,
+            height: 40,
+          });
+        }
+      }
+    } catch (logoErr) {
+      console.error("Failed to embed school logo to PDF", logoErr);
+    }
+  }
   page.drawRectangle({
     x: 10,
     y: 172,
@@ -1337,13 +1440,13 @@ async function drawIdCardPage(
   const sigY = 32;
 
   // ---------------- STUDENT SIGNATURE AREA ----------------
-  // page.drawText(isFr ? "Élève" : "Student", {
-  //   x: studSigX,
-  //   y: sigY + 26,
-  //   size: 6.5,
-  //   font: fontHelveticaBold,
-  //   color: rgb(0.4, 0.4, 0.4),
-  // });
+  page.drawText(isFr ? "Signature de l'Élève" : "Student Signature", {
+    x: studSigX,
+    y: sigY + 24,
+    size: 5,
+    font: fontHelvetica,
+    color: rgb(0.1, 0.1, 0.1),
+  });
 
   page.drawLine({
     start: { x: studSigX, y: sigY + 6 },
@@ -1352,45 +1455,23 @@ async function drawIdCardPage(
     color: rgb(0.7, 0.7, 0.7),
   });
 
-  page.drawText(isFr ? "Signature de l'Élève" : "Student Signature", {
-    x: studSigX + 5,
-    y: sigY + 7.5,
+  page.drawText(`${student.first_name} ${student.last_name}`, {
+    x: studSigX,
+    y: sigY - 2,
     size: 5,
-    font: fontHelvetica,
-    color: rgb(0.5, 0.5, 0.5),
-  });
-
-  // ---------------- PRINCIPAL SIGNATURE AREA ----------------
-  // page.drawText(isFr ? "Directeur" : "Principal", {
-  //   x: sigX,
-  //   y: sigY + 26,
-  //   size: 6.5,
-  //   font: fontHelveticaBold,
-  //   color: rgb(0.4, 0.4, 0.4),
-  // });
-  page.drawLine({
-    start: { x: sigX, y: sigY + 6 },
-    end: { x: sigX + 110, y: sigY + 6 },
-    thickness: 0.5,
-    color: rgb(0.7, 0.7, 0.7),
-  });
-
-  page.drawText(isFr ? "Signature du Directeur" : "Principal Signature", {
-    x: sigX + 10,
-    y: sigY + 7.5,
-    size: 5,
-    font: fontHelvetica,
-    color: rgb(0.5, 0.5, 0.5),
-  });
-
-  const pName = schoolInfo.principal_name || "Hamado Simean";
-  page.drawText(pName, {
-    x: sigX,
-    y: sigY - 3,
-    size: 6.5,
     font: fontHelveticaBold,
     color: rgb(0.15, 0.2, 0.4),
   });
+
+  // ---------------- PRINCIPAL SIGNATURE AREA ----------------
+  page.drawText(isFr ? "Signature du Directeur" : "Principal Signature", {
+    x: sigX,
+    y: sigY + 24,
+    size: 5,
+    font: fontHelvetica,
+    color: rgb(0.1, 0.1, 0.1),
+  });
+
   if (principalSignature) {
     try {
       const matches = principalSignature.match(
@@ -1408,8 +1489,8 @@ async function drawIdCardPage(
         }
         if (embeddedSig) {
           page.drawImage(embeddedSig, {
-            x: sigX + 10,
-            y: sigY + 7,
+            x: sigX,
+            y: sigY + 8,
             width: 60,
             height: 14,
           });
@@ -1419,6 +1500,22 @@ async function drawIdCardPage(
       console.error("Failed to embed principal signature to PDF", sigErr);
     }
   }
+
+  page.drawLine({
+    start: { x: sigX, y: sigY + 6 },
+    end: { x: sigX + 110, y: sigY + 6 },
+    thickness: 0.5,
+    color: rgb(0.7, 0.7, 0.7),
+  });
+
+  const pName = schoolInfo.principal_name || "Hamado Simean";
+  page.drawText(pName, {
+    x: sigX,
+    y: sigY - 2,
+    size: 6.5,
+    font: fontHelveticaBold,
+    color: rgb(0.1, 0.1, 0.1),
+  });
 
   try {
     const verifyUrl = `${protocol}://${host}/verify/${student.id}`;
@@ -1789,8 +1886,8 @@ async function drawTeacherIdCardPage(
   principalSignature,
   protocol,
   host,
+  isFr,
 ) {
-  const isFr = false;
   const hexToRgb = (hex) => {
     const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
     const fullHex = (hex || "#2563eb").replace(
@@ -1810,32 +1907,22 @@ async function drawTeacherIdCardPage(
   const page = pdfDoc.addPage([380, 240]);
   const fontHelvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontHelveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  // 1. Dark background container matching slate-900 / slate-800 look
   page.drawRectangle({
     x: 10,
     y: 10,
     width: 360,
     height: 220,
-    borderColor: rgb(37 / 255, 99 / 255, 235 / 255), // border-blue-500/20
-    borderWidth: 1,
-    color: rgb(15 / 255, 23 / 255, 42 / 255), // bg-slate-900
+    borderColor: rgb(themeColor.r * 0.8, themeColor.g * 0.8, themeColor.b * 0.8),
+    borderWidth: 2,
+    color: rgb(0.98, 0.99, 1.0),
   });
 
-  // Holographic blue glow background
-  page.drawCircle({
-    x: 350,
-    y: 210,
-    size: 30,
-    color: rgb(37 / 255, 99 / 255, 235 / 255),
-    opacity: 0.1,
-  });
-
-  // 2. Header division line
-  page.drawLine({
-    start: { x: 10, y: 175 },
-    end: { x: 370, y: 175 },
-    thickness: 0.5,
-    color: rgb(51 / 255, 65 / 255, 85 / 255), // border-white/10
+  page.drawRectangle({
+    x: 10,
+    y: 175,
+    width: 360,
+    height: 55,
+    color: rgb(themeColor.r, themeColor.g, themeColor.b),
   });
 
   // Header Title in White
@@ -1847,7 +1934,6 @@ async function drawTeacherIdCardPage(
     color: rgb(1, 1, 1),
   });
 
-  // Motto Text in light slate
   const mottoText = schoolInfo.motto
     ? schoolInfo.motto.toUpperCase()
     : isFr
@@ -1858,8 +1944,35 @@ async function drawTeacherIdCardPage(
     y: 184,
     size: 7,
     font: fontHelvetica,
-    color: rgb(148 / 255, 163 / 255, 184 / 255),
+    color: rgb(0.9, 0.94, 1),
   });
+
+  if (schoolInfo.logo_url) {
+    try {
+      const matches = schoolInfo.logo_url.match(
+        /^data:image\/(png|jpeg|jpg);base64,(.+)$/,
+      );
+      if (matches) {
+        const type = matches[1];
+        const base64Data = matches[2];
+        const logoBytes = Buffer.from(base64Data, "base64");
+        let embeddedLogo =
+          type === "png"
+            ? await pdfDoc.embedPng(logoBytes)
+            : await pdfDoc.embedJpg(logoBytes);
+        if (embeddedLogo) {
+          page.drawImage(embeddedLogo, {
+            x: 320,
+            y: 182,
+            width: 40,
+            height: 40,
+          });
+        }
+      }
+    } catch (logoErr) {
+      console.error("Failed to embed school logo to PDF", logoErr);
+    }
+  }
 
   // Portrait frame border
   page.drawRectangle({
@@ -1867,8 +1980,8 @@ async function drawTeacherIdCardPage(
     y: 35,
     width: 105,
     height: 120,
-    color: rgb(15 / 255, 23 / 255, 42 / 255), // bg-slate-900
-    borderColor: rgb(51 / 255, 65 / 255, 85 / 255), // border-white/10
+    color: rgb(0.95, 0.95, 0.95),
+    borderColor: rgb(0.8, 0.8, 0.8),
     borderWidth: 1,
   });
   if (teacher.profile_photo_url) {
@@ -1913,7 +2026,7 @@ async function drawTeacherIdCardPage(
   }
   const labelX = 145;
   const valueX = 220;
-  page.drawText("FACULTY / STAFF", {
+  page.drawText(isFr ? "PERSONNEL / ENSEIGNANT" : "FACULTY / STAFF", {
     x: labelX,
     y: 145,
     size: 13,
@@ -1921,22 +2034,48 @@ async function drawTeacherIdCardPage(
     color: rgb(themeColor.r, themeColor.g, themeColor.b),
   });
   const issueDateStr = new Date().toISOString().substring(0, 10);
-  page.drawText(`ISSUED: ${issueDateStr}`, {
+  const expirationYear = schoolInfo.school_year
+    ? schoolInfo.school_year.split("-")[1]
+    : parseInt(issueDateStr.substring(0, 4)) + 1;
+  const expirationDateStr = `${expirationYear}-06-30`;
+
+  page.drawText(`${isFr ? "DÉLIVRÉ LE :" : "ISSUED:"} ${issueDateStr}`, {
     x: labelX,
     y: 132,
     size: 7,
     font: fontHelvetica,
-    color: rgb(0.4, 0.4, 0.4),
+    color: rgb(0.1, 0.1, 0.1),
   });
+
+  page.drawText(
+    `${isFr ? "VALABLE JUSQU'AU :" : "VALID UNTIL:"} ${expirationDateStr}`,
+    {
+      x: labelX + 75,
+      y: 132,
+      size: 7,
+      font: fontHelvetica,
+      color: rgb(0.1, 0.1, 0.1),
+    },
+  );
   const infoFields = [
-    { label: "Last Name:", value: teacher.last_name.toUpperCase() },
-    { label: "First Name:", value: teacher.first_name },
-    { label: "Role:", value: "Teacher" },
-    { label: "Staff ID:", value: teacher.id.toUpperCase().substring(0, 8) },
+    {
+      label: isFr ? "Nom :" : "Last Name:",
+      value: teacher.last_name?.toUpperCase() || "",
+    },
+    { label: isFr ? "Prénom :" : "First Name:", value: teacher.first_name || "" },
+    {
+      label: isFr ? "Fonction :" : "Role:",
+      value: isFr ? "Enseignant(e)" : "Teacher",
+    },
+    {
+      label: isFr ? "Matricule :" : "Staff ID:",
+      value: (teacher.id || "").toUpperCase().substring(0, 8),
+    },
   ];
   let currentY = 110;
   infoFields.forEach((field) => {
-    const isMatricule = field.label.includes("Staff ID");
+    const isMatricule =
+      field.label.includes("Staff ID") || field.label.includes("Matricule");
     const labelSize = isMatricule ? 7 : 9;
     const valueSize = isMatricule ? 7 : 10;
     page.drawText(field.label, {
@@ -1944,7 +2083,7 @@ async function drawTeacherIdCardPage(
       y: currentY,
       size: labelSize,
       font: fontHelveticaBold,
-      color: rgb(0.2, 0.3, 0.4),
+      color: rgb(0.4, 0.4, 0.4),
     });
     page.drawText(field.value, {
       x: valueX,
@@ -1960,13 +2099,13 @@ async function drawTeacherIdCardPage(
   const sigY = 32;
 
   // ---------------- STAFF SIGNATURE AREA ----------------
-  // page.drawText("Staff / Enseignant", {
-  //   x: staffSigX,
-  //   y: sigY + 26,
-  //   size: 6.5,
-  //   font: fontHelveticaBold,
-  //   color: rgb(0.4, 0.4, 0.4),
-  // });
+  page.drawText(isFr ? "Signature de l'Employé" : "Staff Signature", {
+    x: staffSigX,
+    y: sigY + 24,
+    size: 5,
+    font: fontHelvetica,
+    color: rgb(0.1, 0.1, 0.1),
+  });
 
   if (teacher.staff_signature) {
     try {
@@ -1983,8 +2122,8 @@ async function drawTeacherIdCardPage(
             : await pdfDoc.embedJpg(sigBytes);
         if (embeddedSig) {
           page.drawImage(embeddedSig, {
-            x: staffSigX + 10,
-            y: sigY + 7,
+            x: staffSigX,
+            y: sigY + 8,
             width: 60,
             height: 14,
           });
@@ -1999,25 +2138,25 @@ async function drawTeacherIdCardPage(
     start: { x: staffSigX, y: sigY + 6 },
     end: { x: staffSigX + 85, y: sigY + 6 },
     thickness: 0.5,
-    color: rgb(0.7, 0.7, 0.7),
+    color: rgb(0.4, 0.4, 0.4),
   });
 
-  page.drawText("Staff Signature", {
-    x: staffSigX + 10,
-    y: sigY + 7.5,
+  page.drawText(`${teacher.first_name} ${teacher.last_name}`, {
+    x: staffSigX,
+    y: sigY - 2,
     size: 5,
-    font: fontHelvetica,
-    color: rgb(0.5, 0.5, 0.5),
+    font: fontHelveticaBold,
+    color: rgb(0.1, 0.1, 0.1),
   });
 
   // ---------------- PRINCIPAL SIGNATURE AREA ----------------
-  // page.drawText(isFr ? "Directeur" : "Principal", {
-  //   x: sigX,
-  //   y: sigY + 26,
-  //   size: 6.5,
-  //   font: fontHelveticaBold,
-  //   color: rgb(0.4, 0.4, 0.4),
-  // });
+  page.drawText(isFr ? "Signature du Directeur" : "Principal Signature", {
+    x: sigX,
+    y: sigY + 24,
+    size: 5,
+    font: fontHelvetica,
+    color: rgb(0.1, 0.1, 0.1),
+  });
 
   if (principalSignature) {
     try {
@@ -2034,8 +2173,8 @@ async function drawTeacherIdCardPage(
             : await pdfDoc.embedJpg(sigBytes);
         if (embeddedSig) {
           page.drawImage(embeddedSig, {
-            x: sigX + 10,
-            y: sigY + 7,
+            x: sigX,
+            y: sigY + 8,
             width: 60,
             height: 14,
           });
@@ -2050,24 +2189,16 @@ async function drawTeacherIdCardPage(
     start: { x: sigX, y: sigY + 6 },
     end: { x: sigX + 110, y: sigY + 6 },
     thickness: 0.5,
-    color: rgb(0.7, 0.7, 0.7),
-  });
-
-  page.drawText("Principal Signature", {
-    x: sigX + 10,
-    y: sigY + 7.5,
-    size: 5,
-    font: fontHelvetica,
-    color: rgb(0.5, 0.5, 0.5),
+    color: rgb(0.4, 0.4, 0.4),
   });
 
   const pName = schoolInfo.principal_name || "Hamado Simean";
   page.drawText(pName, {
     x: sigX,
-    y: sigY - 3,
+    y: sigY - 2,
     size: 6.5,
     font: fontHelveticaBold,
-    color: rgb(0.15, 0.2, 0.4),
+    color: rgb(0.1, 0.1, 0.1),
   });
 
   try {
@@ -2134,6 +2265,8 @@ app.get("/api/teacher-id-cards/download/:teacherId", async (req, res) => {
       }
     }
 
+    const isFr = req.query.lang === "fr";
+
     await drawTeacherIdCardPage(
       pdfDoc,
       teacherData,
@@ -2141,6 +2274,7 @@ app.get("/api/teacher-id-cards/download/:teacherId", async (req, res) => {
       principalSignature,
       req.protocol,
       req.get("host") || "",
+      isFr,
     );
     const pdfBytes = await pdfDoc.save();
     res.setHeader("Content-Type", "application/pdf");
@@ -2357,6 +2491,7 @@ app.get("/api/students", async (req, res) => {
   const joinedStudents = [];
   for (const u of students) {
     const app = await ApplicationModel.findOne({ student_id: u.id }).lean();
+    const parent = await ParentModel.findOne({ student_id: u.id }).lean();
     joinedStudents.push({
       id: u.id,
       first_name: u.first_name,
@@ -2367,6 +2502,9 @@ app.get("/api/students", async (req, res) => {
       target_class: app?.target_class || "",
       last_school_name: app?.last_school_name || "",
       last_general_grade: app?.last_general_grade || 0,
+      parent_full_name: parent?.full_name || "",
+      parent_phone: parent?.phone || "",
+      parent_place_of_living: parent?.place_of_living || "",
       status: app?.status || "approved",
     });
   }
@@ -2382,6 +2520,9 @@ app.post("/api/students", async (req, res) => {
     last_school_name,
     last_general_grade,
     preferred_language,
+    parent_full_name,
+    parent_phone,
+    parent_place_of_living,
   } = req.body;
   if (!first_name || !last_name || !email) {
     return res
@@ -2403,6 +2544,16 @@ app.post("/api/students", async (req, res) => {
     role: "student",
     preferred_language: preferred_language || "en",
     is_active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  });
+  const parentId = `parent_${Math.random().toString(36).substring(2, 11)}`;
+  await ParentModel.create({
+    id: parentId,
+    student_id: userId,
+    full_name: parent_full_name || "",
+    phone: parent_phone || "",
+    place_of_living: parent_place_of_living || "",
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   });
@@ -2454,6 +2605,9 @@ app.put("/api/students/:id", async (req, res) => {
     last_school_name,
     last_general_grade,
     preferred_language,
+    parent_full_name,
+    parent_phone,
+    parent_place_of_living,
   } = req.body;
   const user = await UserModel.findOne({ id, role: "student" });
   if (!user) {
@@ -2466,6 +2620,21 @@ app.put("/api/students/:id", async (req, res) => {
   user.updated_at = new Date().toISOString();
   await user.save();
 
+  let parent = await ParentModel.findOne({ student_id: id });
+  if (!parent) {
+    parent = await ParentModel.create({
+      id: `parent_${Math.random().toString(36).substring(2, 11)}`,
+      student_id: id,
+      created_at: new Date().toISOString(),
+    });
+  }
+  if (parent_full_name !== undefined) parent.full_name = parent_full_name;
+  if (parent_phone !== undefined) parent.phone = parent_phone;
+  if (parent_place_of_living !== undefined)
+    parent.place_of_living = parent_place_of_living;
+  parent.updated_at = new Date().toISOString();
+  await parent.save();
+
   let app = await ApplicationModel.findOne({ student_id: id });
   if (!app) {
     const appId = `app_${Math.random().toString(36).substring(2, 11)}`;
@@ -2477,6 +2646,9 @@ app.put("/api/students/:id", async (req, res) => {
       last_general_grade: last_general_grade
         ? Number(last_general_grade)
         : 15.0,
+      parent_full_name: parent_full_name || "",
+      parent_phone: parent_phone || "",
+      parent_place_of_living: parent_place_of_living || "",
       transcript_file_name: "created_by_admin.pdf",
       payment_receipt_name: "created_by_admin.png",
       recommendation_letter_name: "created_by_admin.pdf",
@@ -2489,6 +2661,10 @@ app.put("/api/students/:id", async (req, res) => {
     if (last_school_name) app.last_school_name = last_school_name;
     if (last_general_grade !== undefined)
       app.last_general_grade = Number(last_general_grade);
+    if (parent_full_name !== undefined) app.parent_full_name = parent_full_name;
+    if (parent_phone !== undefined) app.parent_phone = parent_phone;
+    if (parent_place_of_living !== undefined)
+      app.parent_place_of_living = parent_place_of_living;
     await app.save();
   }
   return res.json({
@@ -2624,6 +2800,8 @@ app.get("/api/classes", async (req, res) => {
         list.push({
           teacher_id: t.teacher_id,
           topic: t.topic || "General",
+          day_of_week: t.day_of_week,
+          time_slot: t.time_slot,
           teacher_name: teacherUser
             ? `${teacherUser.first_name} ${teacherUser.last_name}`
             : "Unknown Teacher",

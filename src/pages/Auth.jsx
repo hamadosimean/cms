@@ -60,7 +60,7 @@ export default function Auth({
         <form onSubmit={handleAuthSubmit} className="space-y-4">
           {/* Registration fields */}
           {!isLoginView && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
                   {getTranslation("firstName", lang)}{" "}
@@ -136,7 +136,7 @@ export default function Auth({
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
                   {getTranslation("selectRole", lang)}
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {["student", "teacher"].map((r) => (
                     <button
                       type="button"

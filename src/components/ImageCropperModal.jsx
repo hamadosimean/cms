@@ -139,7 +139,7 @@ export function ImageCropperModal({ imageSrc, onCrop, onClose, lang = "en" }) {
         </div>
 
         {/* Crop Stage Area */}
-        <div className="flex-1 p-6 flex flex-col items-center justify-center bg-slate-950/50">
+        <div className="flex-1 p-3 sm:p-6 flex flex-col items-center justify-center bg-slate-950/50 overflow-hidden">
           <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-4 flex items-center gap-1.5 select-none">
             <Move className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
             {isFr
@@ -250,7 +250,7 @@ export function ImageCropperModal({ imageSrc, onCrop, onClose, lang = "en" }) {
                 title="Rotate 90° CCW"
               >
                 <RotateCcw className="w-4 h-4" />
-                <span className="text-[9px] font-bold">-90°</span>
+                <span className="hidden sm:inline text-[9px] font-bold">-90°</span>
               </button>
               <input
                 type="range"
@@ -269,13 +269,13 @@ export function ImageCropperModal({ imageSrc, onCrop, onClose, lang = "en" }) {
                 title="Rotate 90° CW"
               >
                 <RotateCw className="w-4 h-4" />
-                <span className="text-[9px] font-bold">+90°</span>
+                <span className="hidden sm:inline text-[9px] font-bold">+90°</span>
               </button>
             </div>
           </div>
 
           {/* Action buttons */}
-          <div className="flex items-center gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
             <button
               onClick={handleReset}
               className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-1.5 cursor-pointer border border-slate-700"

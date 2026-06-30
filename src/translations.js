@@ -102,6 +102,22 @@ export const translations = {
     en: "Academic Info",
     fr: "Infos Académiques",
   },
+  wizardStepParent: {
+    en: "Parent Infos",
+    fr: "Infos Parent",
+  },
+  parentFullName: {
+    en: "Parent Full Name",
+    fr: "Nom Complet du Parent",
+  },
+  parentPhone: {
+    en: "Parent Phone Number",
+    fr: "Numéro de Téléphone du Parent",
+  },
+  parentPlaceOfLiving: {
+    en: "Place of Living",
+    fr: "Lieu de Résidence",
+  },
   wizardStepDocs: {
     en: "Required Documents",
     fr: "Documents Requis",

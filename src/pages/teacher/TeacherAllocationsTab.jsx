@@ -34,9 +34,8 @@ export default function TeacherAllocationsTab({
                 return (
                   <div className="space-y-3">
                     {teacherAllocatedClasses.map((cls) => {
-                      const mySubjects = (cls.teachers || [])
-                        .filter((t) => t.teacher_id === user?.id)
-                        .map((t) => t.topic);
+                      const myAssignments = (cls.teachers || [])
+                        .filter((t) => t.teacher_id === user?.id);
                       return (
                         <div
                           key={cls.id}
@@ -56,14 +55,19 @@ export default function TeacherAllocationsTab({
                                 ? "Matières enseignées :"
                                 : "Subjects Taught:"}
                             </span>
-                            <div className="flex flex-wrap gap-1">
-                              {mySubjects.map((sub, idx) => (
-                                <span
+                            <div className="flex flex-col gap-1.5">
+                              {myAssignments.map((assignment, idx) => (
+                                <div
                                   key={idx}
-                                  className="px-2 py-0.5 bg-blue-50 border border-blue-100 text-blue-700 font-semibold rounded text-[10px]"
+                                  className="px-2 py-1.5 bg-blue-50/50 hover:bg-blue-50 transition border border-blue-100 text-blue-700 rounded-lg text-xs flex justify-between items-center"
                                 >
-                                  {sub}
-                                </span>
+                                  <span className="font-bold">{assignment.topic}</span>
+                                  {(assignment.day_of_week || assignment.time_slot) && (
+                                    <span className="text-[10px] text-slate-500 font-medium bg-white px-1.5 py-0.5 rounded shadow-sm border border-slate-100">
+                                      {assignment.day_of_week} {assignment.time_slot ? `(${assignment.time_slot})` : ''}
+                                    </span>
+                                  )}
+                                </div>
                               ))}
                             </div>
                           </div>

@@ -6,7 +6,7 @@ import { useAppHandlers } from '../../hooks/useAppHandlers';
 export const ClassModal = () => {
     const store = useAppStore();
     const handlers = useAppHandlers();
-    const { lang, user, adminUsers, adminApplications, adminStudents, adminTeachers, adminIdCards, classesList, toast, setToast, showClassModal, setShowClassModal, editingClassId, setEditingClassId, formClassName, setFormClassName, formClassCapacity, setFormClassCapacity, formClassTeachers, setFormClassTeachers, formClassSubjects, setFormClassSubjects, newSubjectInput, setNewSubjectInput, assignTeacherId, setAssignTeacherId, assignTopic, setAssignTopic, showStudentModal, setShowStudentModal, editingStudentId, setEditingStudentId, formStudentFirst, setFormStudentFirst, formStudentLast, setFormStudentLast, formStudentEmail, setFormStudentEmail, formStudentClass, setFormStudentClass, formStudentSchool, setFormStudentSchool, formStudentGrade, setFormStudentGrade, formStudentLang, setFormStudentLang, showTeacherModal, setShowTeacherModal, editingTeacherId, setEditingTeacherId, formTeacherFirst, setFormTeacherFirst, formTeacherLast, setFormTeacherLast, formTeacherEmail, setFormTeacherEmail, formTeacherQual, setFormTeacherQual, formTeacherExp, setFormTeacherExp, formTeacherNotes, setFormTeacherNotes, formTeacherClasses, setFormTeacherClasses, formTeacherCourses, setFormTeacherCourses, showAdminModal, setShowAdminModal, formAdminFirst, setFormAdminFirst, formAdminLast, setFormAdminLast, formAdminEmail, setFormAdminEmail, formAdminPassword, setFormAdminPassword, formAdminLang, setFormAdminLang, showCardModal, setShowCardModal, editingCard, setEditingCard, formCardFirst, setFormCardFirst, formCardLast, setFormCardLast, formCardClass, setFormCardClass, formCardPhoto, setFormCardPhoto, formCardStatus, setFormCardStatus, formCardValidUntil, setFormCardValidUntil, viewingCard, setViewingCard, selectedStudentAiProfile, setSelectedStudentAiProfile, selectedTeacherAiProfile, setSelectedTeacherAiProfile, loadingAiAnalysis, setLoadingAiAnalysis, showPrintModal, setShowPrintModal, showCommandPalette, setShowCommandPalette, commandPaletteQuery, setCommandPaletteQuery } = store;
+    const { lang, user, adminUsers, adminApplications, adminStudents, adminTeachers, adminIdCards, classesList, toast, setToast, showClassModal, setShowClassModal, editingClassId, setEditingClassId, formClassName, setFormClassName, formClassCapacity, setFormClassCapacity, formClassTeachers, setFormClassTeachers, formClassSubjects, setFormClassSubjects, newSubjectInput, setNewSubjectInput, assignTeacherId, setAssignTeacherId, assignTopic, setAssignTopic, assignDayOfWeek, setAssignDayOfWeek, assignTimeSlot, setAssignTimeSlot, showStudentModal, setShowStudentModal, editingStudentId, setEditingStudentId, formStudentFirst, setFormStudentFirst, formStudentLast, setFormStudentLast, formStudentEmail, setFormStudentEmail, formStudentClass, setFormStudentClass, formStudentSchool, setFormStudentSchool, formStudentGrade, setFormStudentGrade, formStudentLang, setFormStudentLang, showTeacherModal, setShowTeacherModal, editingTeacherId, setEditingTeacherId, formTeacherFirst, setFormTeacherFirst, formTeacherLast, setFormTeacherLast, formTeacherEmail, setFormTeacherEmail, formTeacherQual, setFormTeacherQual, formTeacherExp, setFormTeacherExp, formTeacherNotes, setFormTeacherNotes, formTeacherClasses, setFormTeacherClasses, formTeacherCourses, setFormTeacherCourses, showAdminModal, setShowAdminModal, formAdminFirst, setFormAdminFirst, formAdminLast, setFormAdminLast, formAdminEmail, setFormAdminEmail, formAdminPassword, setFormAdminPassword, formAdminLang, setFormAdminLang, showCardModal, setShowCardModal, editingCard, setEditingCard, formCardFirst, setFormCardFirst, formCardLast, setFormCardLast, formCardClass, setFormCardClass, formCardPhoto, setFormCardPhoto, formCardStatus, setFormCardStatus, formCardValidUntil, setFormCardValidUntil, viewingCard, setViewingCard, selectedStudentAiProfile, setSelectedStudentAiProfile, selectedTeacherAiProfile, setSelectedTeacherAiProfile, loadingAiAnalysis, setLoadingAiAnalysis, showPrintModal, setShowPrintModal, showCommandPalette, setShowCommandPalette, commandPaletteQuery, setCommandPaletteQuery } = store;
     // We spread the handlers so they are available in the scope
     const { handleSaveClass, handleDeleteClass, toggleFormClass, handleRemoveTeacherAssignmentFromClass, toggleFormCourse, handleSaveStudent, handleDeleteStudentClick, handleAnalyzeStudent, handleAdminSaveTeacher, handleDeleteTeacherClick, handleAnalyzeTeacher, handleAdminSaveAdmin, handleAdminDeleteAdmin, handleSaveEditCard, handleCardPhotoUpload, handleBatchPdfDownload, getFilteredCommandPaletteItems, displayStudents, showNotification, } = handlers;
     return (<>
@@ -89,7 +89,14 @@ export const ClassModal = () => {
                     return (<div key={index} className="flex justify-between items-center text-xs bg-white border border-slate-200 p-2 rounded-lg shadow-xs">
                           <div className="min-w-0 flex-1">
                             <span className="font-semibold text-slate-800 block truncate">{name}</span>
-                            <span className="text-[10px] text-emerald-600 block font-medium truncate">{item.topic}</span>
+                            <div className="flex gap-2 items-center">
+                              <span className="text-[10px] text-emerald-600 block font-medium truncate">{item.topic}</span>
+                              {(item.day_of_week || item.time_slot) && (
+                                <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-sm">
+                                  {item.day_of_week} {item.time_slot ? `(${item.time_slot})` : ''}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <button type="button" onClick={() => {
                             setFormClassTeachers(prev => prev.filter((_, idx) => idx !== index));
@@ -122,6 +129,19 @@ export const ClassModal = () => {
                         <option value="">{lang === 'fr' ? '-- Choisir Matière --' : '-- Select Subject --'}</option>
                         {formClassSubjects.map((sub, index) => (<option key={index} value={sub}>{sub}</option>))}
                       </select>
+                    </div>
+                    <div>
+                      <select value={assignDayOfWeek} onChange={e => setAssignDayOfWeek(e.target.value)} className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-blue-600 transition bg-white cursor-pointer">
+                        <option value="">{lang === 'fr' ? '-- Jour --' : '-- Day --'}</option>
+                        {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
+                          <option key={day} value={day}>
+                            {lang === 'fr' ? (day === 'Monday' ? 'Lundi' : day === 'Tuesday' ? 'Mardi' : day === 'Wednesday' ? 'Mercredi' : day === 'Thursday' ? 'Jeudi' : day === 'Friday' ? 'Vendredi' : 'Samedi') : day}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <input type="text" placeholder={lang === 'fr' ? 'Ex: 08h-12h' : 'Ex: 08h-12h'} value={assignTimeSlot} onChange={e => setAssignTimeSlot(e.target.value)} className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-blue-600 transition bg-white"/>
                     </div>
                   </div>
 
@@ -160,14 +180,16 @@ export const ClassModal = () => {
                     return;
                 }
                 // Check duplicate assignment
-                if (formClassTeachers.some(item => item.teacher_id === assignTeacherId && item.topic.toLowerCase() === assignTopic.toLowerCase())) {
-                    showNotification(lang === 'fr' ? 'Cette affectation existe déjà.' : 'This teacher is already assigned to this subject.', 'error');
+                if (formClassTeachers.some(item => item.teacher_id === assignTeacherId && item.topic.toLowerCase() === assignTopic.toLowerCase() && item.day_of_week === assignDayOfWeek && item.time_slot === assignTimeSlot)) {
+                    showNotification(lang === 'fr' ? 'Cette affectation exacte existe déjà.' : 'This exact assignment already exists.', 'error');
                     return;
                 }
-                setFormClassTeachers(prev => [...prev, { teacher_id: assignTeacherId, topic: assignTopic }]);
+                setFormClassTeachers(prev => [...prev, { teacher_id: assignTeacherId, topic: assignTopic, day_of_week: assignDayOfWeek, time_slot: assignTimeSlot }]);
                 showNotification(lang === 'fr' ? 'Affectation ajoutée.' : 'Assignment added successfully.', 'success');
                 setAssignTeacherId('');
                 setAssignTopic('');
+                setAssignDayOfWeek('');
+                setAssignTimeSlot('');
             }} className="w-full py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition cursor-pointer">
                     + {lang === 'fr' ? 'Affecter l\'enseignant' : 'Assign Teacher to Topic'}
                   </button>

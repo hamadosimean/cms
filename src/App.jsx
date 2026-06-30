@@ -102,6 +102,12 @@ export default function App() {
     setLastSchoolName,
     lastGeneralGrade,
     setLastGeneralGrade,
+    parentFullName,
+    setParentFullName,
+    parentPhone,
+    setParentPhone,
+    parentPlaceOfLiving,
+    setParentPlaceOfLiving,
     transcriptFile,
     setTranscriptFile,
     receiptFile,
@@ -204,6 +210,12 @@ export default function App() {
     setFormStudentGrade,
     formStudentLang,
     setFormStudentLang,
+    formStudentParentName,
+    setFormStudentParentName,
+    formStudentParentPhone,
+    setFormStudentParentPhone,
+    formStudentParentLiving,
+    setFormStudentParentLiving,
     showAdminModal,
     setShowAdminModal,
     formAdminFirst,
@@ -244,6 +256,12 @@ export default function App() {
     setProfileLang,
     profileEmail,
     setProfileEmail,
+    profileParentName,
+    setProfileParentName,
+    profileParentPhone,
+    setProfileParentPhone,
+    profileParentLiving,
+    setProfileParentLiving,
     showClassModal,
     setShowClassModal,
     editingClassId,
@@ -492,7 +510,16 @@ export default function App() {
                   profileEmail={profileEmail}
                   profileLang={profileLang}
                   setProfileLang={setProfileLang}
+                  profileParentName={profileParentName}
+                  setProfileParentName={setProfileParentName}
+                  profileParentPhone={profileParentPhone}
+                  setProfileParentPhone={setProfileParentPhone}
+                  profileParentLiving={profileParentLiving}
+                  setProfileParentLiving={setProfileParentLiving}
                   handleProfileUpdateSubmit={handleProfileUpdateSubmit}
+                  teacherProfile={teacherProfile}
+                  schoolInfo={schoolInfo}
+                  principalSignature={principalSignature}
                 />
               )}
 
@@ -514,6 +541,12 @@ export default function App() {
                       setLastSchoolName={setLastSchoolName}
                       lastGeneralGrade={lastGeneralGrade}
                       setLastGeneralGrade={setLastGeneralGrade}
+                      parentFullName={parentFullName}
+                      setParentFullName={setParentFullName}
+                      parentPhone={parentPhone}
+                      setParentPhone={setParentPhone}
+                      parentPlaceOfLiving={parentPlaceOfLiving}
+                      setParentPlaceOfLiving={setParentPlaceOfLiving}
                       showNotification={showNotification}
                       transcriptFile={transcriptFile}
                       setTranscriptFile={setTranscriptFile}
@@ -709,13 +742,14 @@ export default function App() {
                     </>
                   )}
 
-                  {activeSidebarTab === "overview" && user.role === "principal" && (
-                    <SignaturePad
-                      onSave={handleSaveSignature}
-                      initialSignatureUrl={principalSignature}
-                      lang={lang}
-                    />
-                  )}
+                  {activeSidebarTab === "overview" &&
+                    user.role === "principal" && (
+                      <SignaturePad
+                        onSave={handleSaveSignature}
+                        initialSignatureUrl={principalSignature}
+                        lang={lang}
+                      />
+                    )}
 
                   {activeSidebarTab === "admissions" && (
                     /* --- SIMULATED BACKGROUND MULTILINGUAL EMAIL COMMUNICATIONS LOGS --- */
@@ -830,6 +864,8 @@ export default function App() {
             }}
             onCrop={(cropped) => {
               onCropComplete(cropped);
+              setCroppingImage(null);
+              setOnCropComplete(null);
             }}
           />
         )}

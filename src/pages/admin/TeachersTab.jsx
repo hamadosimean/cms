@@ -58,7 +58,7 @@ export default function TeachersTab({
             }
           >
             <Printer className="w-4 h-4 text-slate-500" />
-            <span>{lang === "fr" ? "Aperçu Impression" : "Print Preview"}</span>
+            <span className="hidden sm:inline">{lang === "fr" ? "Aperçu Impression" : "Print Preview"}</span>
           </button>
           <button
             onClick={handleExportTeachersCSV}
@@ -70,7 +70,7 @@ export default function TeachersTab({
             }
           >
             <Download className="w-4 h-4 text-slate-500" />
-            <span>{lang === "fr" ? "Exporter CSV" : "Export CSV"}</span>
+            <span className="hidden sm:inline">{lang === "fr" ? "Exporter CSV" : "Export CSV"}</span>
           </button>
           <button
             onClick={() => {
@@ -79,8 +79,8 @@ export default function TeachersTab({
             }}
             className="px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white transition flex items-center gap-1 min-h-11 cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
-            <span>{getTranslation("addTeacherBtn", lang)}</span>
+            <Plus className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline">{getTranslation("addTeacherBtn", lang)}</span>
           </button>
         </div>
       </div>
@@ -277,7 +277,7 @@ export default function TeachersTab({
                     </span>
                   </button>
                   <a
-                    href={`/api/teacher-id-cards/download/${teach.id}`}
+                    href={`/api/teacher-id-cards/download/${teach.id}?lang=${lang}`}
                     download={`Teacher_ID_${teach.last_name}_${teach.first_name}.pdf`}
                     className="px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase bg-indigo-600 hover:bg-indigo-700 text-white transition flex items-center gap-1 cursor-pointer min-h-11 decoration-transparent"
                     title="Print Teacher ID Card"

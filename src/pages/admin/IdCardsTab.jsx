@@ -289,14 +289,14 @@ export default function IdCardsTab({
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200/60">
+                  <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-slate-200/60">
                     <button
                       onClick={() => setViewingCard(card)}
                       className="px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wider transition flex items-center gap-1 min-h-10 cursor-pointer"
                       title="View ID Card Popup"
                     >
                       <GraduationCap className="w-3.5 h-3.5 text-blue-500" />
-                      <span>{lang === "fr" ? "Voir Carte" : "View Card"}</span>
+                      <span className="hidden sm:inline">{lang === "fr" ? "Voir Carte" : "View Card"}</span>
                     </button>
 
                     <button
@@ -305,7 +305,7 @@ export default function IdCardsTab({
                       title="Edit student card info"
                     >
                       <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-                      <span>{lang === "fr" ? "Modifier" : "Edit"}</span>
+                      <span className="hidden sm:inline">{lang === "fr" ? "Modifier" : "Edit"}</span>
                     </button>
 
                     {card.card_status === "pending" ? (
@@ -314,17 +314,19 @@ export default function IdCardsTab({
                         className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition flex items-center gap-1 min-h-10 cursor-pointer"
                       >
                         <Check className="w-3.5 h-3.5" />
-                        <span>{getTranslation("approveID", lang)}</span>
+                        <span className="hidden sm:inline">{getTranslation("approveID", lang)}</span>
                       </button>
                     ) : (
-                      <a
-                        href={`/api/id-cards/download/${card.student_id}`}
-                        download={`Student_ID_Card_${card.student_id}.pdf`}
-                        className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition flex items-center gap-1 min-h-10 cursor-pointer decoration-transparent font-sans"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>{lang === "fr" ? "Télécharger" : "Download"}</span>
-                      </a>
+                      card.profile_photo_url && (
+                        <a
+                          href={`/api/id-cards/download/${card.student_id}?lang=${lang}`}
+                          download={`Student_ID_Card_${card.student_id}.pdf`}
+                          className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition flex items-center gap-1 min-h-10 cursor-pointer decoration-transparent font-sans"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">{lang === "fr" ? "Télécharger" : "Download"}</span>
+                        </a>
+                      )
                     )}
 
                     <button
@@ -333,7 +335,7 @@ export default function IdCardsTab({
                       title="Delete card record"
                     >
                       <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                      <span>{lang === "fr" ? "Supprimer" : "Delete"}</span>
+                      <span className="hidden sm:inline">{lang === "fr" ? "Supprimer" : "Delete"}</span>
                     </button>
                   </div>
                 </div>

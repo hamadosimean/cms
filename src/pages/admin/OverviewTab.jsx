@@ -149,7 +149,7 @@ export default function OverviewTab({ lang }) {
                       textAnchor="middle"
                       className="text-[9px] font-bold uppercase fill-slate-400"
                     >
-                      Total
+                      {lang === "fr" ? "Total" : "Total"}
                     </text>
 
                     {/* BAR 2: APPROVED */}
@@ -176,7 +176,7 @@ export default function OverviewTab({ lang }) {
                       textAnchor="middle"
                       className="text-[9px] font-bold uppercase fill-slate-400"
                     >
-                      Appr.
+                      {lang === "fr" ? "Appr." : "Appr."}
                     </text>
 
                     {/* BAR 3: REJECTED */}
@@ -203,7 +203,7 @@ export default function OverviewTab({ lang }) {
                       textAnchor="middle"
                       className="text-[9px] font-bold uppercase fill-slate-400"
                     >
-                      Rej.
+                      {lang === "fr" ? "Rej." : "Rej."}
                     </text>
 
                     {/* BAR 4: PENDING */}
@@ -230,7 +230,7 @@ export default function OverviewTab({ lang }) {
                       textAnchor="middle"
                       className="text-[9px] font-bold uppercase fill-slate-400"
                     >
-                      Pend.
+                      {lang === "fr" ? "Att." : "Pend."}
                     </text>
                   </>
                 );
@@ -258,7 +258,8 @@ export default function OverviewTab({ lang }) {
                   <div className="flex justify-between text-xs font-semibold text-slate-700">
                     <span className="font-mono">{item.class_name}</span>
                     <span className="font-mono">
-                      {item.count} / {item.capacity} students{" "}
+                      {item.count} / {item.capacity}{" "}
+                      {lang === "fr" ? "étudiants" : "students"}{" "}
                       <span className="text-slate-400">({percent}%)</span>
                     </span>
                   </div>

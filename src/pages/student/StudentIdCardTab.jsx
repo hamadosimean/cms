@@ -127,7 +127,7 @@ export default function StudentIdCardTab({
                     {studentCard.card_status === "pending" ? (
                       <p className="flex items-center gap-1.5 font-medium">
                         <Clock className="w-4 h-4 shrink-0 animate-spin text-blue-500" />
-                        {/* <span>{getTranslation("idPendingReview", lang)}</span> */}
+                        <span>{getTranslation("idPendingReview", lang)}</span>
                       </p>
                     ) : (
                       <div className="space-y-3">
@@ -135,19 +135,19 @@ export default function StudentIdCardTab({
                           <>
                             <p className="flex items-center gap-1.5 font-bold">
                               <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" />
-                              {/* <span>
+                              <span>
                                 {getTranslation("idGeneratedSuccess", lang)}
-                              </span> */}
+                              </span>
                             </p>
 
                             {/* Print download CTA triggers Express binary stream download */}
                             <a
-                              href={`/api/id-cards/download/${user.id}`}
+                              href={`/api/id-cards/download/${user.id}?lang=${lang}`}
                               download={`Student_ID_Card_${user.last_name}.pdf`}
                               className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition shadow"
                             >
                               <Download className="w-4 h-4" />
-                              {/* <span>{getTranslation("downloadPDF", lang)}</span> */}
+                              <span>{getTranslation("downloadPDF", lang)}</span>
                             </a>
                           </>
                         ) : (

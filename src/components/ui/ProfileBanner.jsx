@@ -19,15 +19,15 @@ export default function ProfileBanner({ user, lang }) {
           <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
             {user.first_name} {user.last_name}
           </h3>
-          <p className="text-xs text-slate-400 font-mono tracking-wider mt-0.5 uppercase flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <p className="text-xs text-slate-400 font-mono tracking-wider mt-0.5 uppercase flex flex-wrap items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
             {user.role === "student"
               ? getTranslation("roleStudent", lang)
               : user.role === "teacher"
                 ? getTranslation("roleTeacher", lang)
                 : getTranslation("roleAdmin", lang)}
             {" • "}
-            <span className="text-blue-400 font-semibold">{user.email}</span>
+            <span className="text-blue-400 font-semibold break-all">{user.email}</span>
           </p>
         </div>
       </div>

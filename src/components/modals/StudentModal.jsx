@@ -53,6 +53,12 @@ export const StudentModal = () => {
     setFormStudentGrade,
     formStudentLang,
     setFormStudentLang,
+    formStudentParentName,
+    setFormStudentParentName,
+    formStudentParentPhone,
+    setFormStudentParentPhone,
+    formStudentParentLiving,
+    setFormStudentParentLiving,
     showTeacherModal,
     setShowTeacherModal,
     editingTeacherId,
@@ -277,6 +283,43 @@ export const StudentModal = () => {
                   value={formStudentSchool}
                   onChange={(e) => setFormStudentSchool(e.target.value)}
                   placeholder="e.g. Saint Jude Middle School"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 transition"
+                />
+              </div>
+
+              {/* Parent Information */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                    {lang === "fr" ? "Nom Complet du Parent" : "Parent Full Name"}
+                  </label>
+                  <input
+                    type="text"
+                    value={formStudentParentName}
+                    onChange={(e) => setFormStudentParentName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                    {lang === "fr" ? "Téléphone du Parent" : "Parent Phone"}
+                  </label>
+                  <input
+                    type="text"
+                    value={formStudentParentPhone}
+                    onChange={(e) => setFormStudentParentPhone(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 transition"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                  {lang === "fr" ? "Lieu de Résidence" : "Place of Living"}
+                </label>
+                <input
+                  type="text"
+                  value={formStudentParentLiving}
+                  onChange={(e) => setFormStudentParentLiving(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 transition"
                 />
               </div>

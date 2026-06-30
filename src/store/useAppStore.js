@@ -102,6 +102,23 @@ export const useAppStore = create((set, get) => ({
       lastGeneralGrade:
         typeof val === "function" ? val(get().lastGeneralGrade) : val,
     }),
+  parentFullName: "",
+  setParentFullName: (val) =>
+    set({
+      parentFullName:
+        typeof val === "function" ? val(get().parentFullName) : val,
+    }),
+  parentPhone: "",
+  setParentPhone: (val) =>
+    set({
+      parentPhone: typeof val === "function" ? val(get().parentPhone) : val,
+    }),
+  parentPlaceOfLiving: "",
+  setParentPlaceOfLiving: (val) =>
+    set({
+      parentPlaceOfLiving:
+        typeof val === "function" ? val(get().parentPlaceOfLiving) : val,
+    }),
   transcriptFile: null,
   setTranscriptFile: (val) =>
     set({
@@ -419,6 +436,21 @@ export const useAppStore = create((set, get) => ({
       formStudentLang:
         typeof val === "function" ? val(get().formStudentLang) : val,
     }),
+  formStudentParentName: "",
+  setFormStudentParentName: (val) =>
+    set({
+      formStudentParentName: typeof val === "function" ? val(get().formStudentParentName) : val,
+    }),
+  formStudentParentPhone: "",
+  setFormStudentParentPhone: (val) =>
+    set({
+      formStudentParentPhone: typeof val === "function" ? val(get().formStudentParentPhone) : val,
+    }),
+  formStudentParentLiving: "",
+  setFormStudentParentLiving: (val) =>
+    set({
+      formStudentParentLiving: typeof val === "function" ? val(get().formStudentParentLiving) : val,
+    }),
   showAdminModal: false,
   setShowAdminModal: (val) =>
     set({
@@ -528,6 +560,21 @@ export const useAppStore = create((set, get) => ({
     set({
       profileEmail: typeof val === "function" ? val(get().profileEmail) : val,
     }),
+  profileParentName: "",
+  setProfileParentName: (val) =>
+    set({
+      profileParentName: typeof val === "function" ? val(get().profileParentName) : val,
+    }),
+  profileParentPhone: "",
+  setProfileParentPhone: (val) =>
+    set({
+      profileParentPhone: typeof val === "function" ? val(get().profileParentPhone) : val,
+    }),
+  profileParentLiving: "",
+  setProfileParentLiving: (val) =>
+    set({
+      profileParentLiving: typeof val === "function" ? val(get().profileParentLiving) : val,
+    }),
   showClassModal: false,
   setShowClassModal: (val) =>
     set({
@@ -579,6 +626,18 @@ export const useAppStore = create((set, get) => ({
   setAssignTopic: (val) =>
     set({
       assignTopic: typeof val === "function" ? val(get().assignTopic) : val,
+    }),
+  assignDayOfWeek: "",
+  setAssignDayOfWeek: (val) =>
+    set({
+      assignDayOfWeek:
+        typeof val === "function" ? val(get().assignDayOfWeek) : val,
+    }),
+  assignTimeSlot: "",
+  setAssignTimeSlot: (val) =>
+    set({
+      assignTimeSlot:
+        typeof val === "function" ? val(get().assignTimeSlot) : val,
     }),
   principalSignature: null,
   setPrincipalSignature: (val) =>

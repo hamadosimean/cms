@@ -103,7 +103,7 @@ export default function LandingPage({
               : "St. Jude Academy is home to a diverse community of ambitious, high-achieving pupils. Our curriculum is tailored to help young minds discover their passions and achieve peak potential."}
           </p>
         </div>
-        <div className="md:col-span-7 grid grid-cols-2 gap-4">
+        <div className="md:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <img
             src={kidImg}
             alt="Pupil Kid"
@@ -287,7 +287,7 @@ export default function LandingPage({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="p-5 bg-white rounded-2xl border border-slate-200 space-y-2">
               <Clock className="text-blue-600 w-8 h-8" />
               <h4 className="font-bold text-slate-800 text-sm">

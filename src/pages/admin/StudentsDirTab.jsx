@@ -67,7 +67,7 @@ export default function StudentsDirTab({
             }
           >
             <Printer className="w-4 h-4 text-slate-500" />
-            <span>{lang === "fr" ? "Aperçu Impression" : "Print Preview"}</span>
+            <span className="hidden sm:inline">{lang === "fr" ? "Aperçu Impression" : "Print Preview"}</span>
           </button>
           <button
             onClick={handleExportCSV}
@@ -80,7 +80,7 @@ export default function StudentsDirTab({
             }
           >
             <Download className="w-4 h-4 text-slate-500 animate-pulse-subtle" />
-            <span>{lang === "fr" ? "Exporter CSV" : "Export CSV"}</span>
+            <span className="hidden sm:inline">{lang === "fr" ? "Exporter CSV" : "Export CSV"}</span>
           </button>
           <button
             onClick={() => {
@@ -89,8 +89,8 @@ export default function StudentsDirTab({
             }}
             className="px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white transition flex items-center gap-1 min-h-11 cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
-            <span>
+            <Plus className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline">
               {lang === "fr" ? "Ajouter un Étudiant" : "Add Student Record"}
             </span>
           </button>
@@ -213,8 +213,8 @@ export default function StudentsDirTab({
           </div>
 
           {selectedStudentIds.length > 0 && (
-            <div className="flex items-center gap-2 animate-fadeIn">
-              <span className="font-semibold text-slate-50 uppercase tracking-wider text-[10px] hidden md:inline mr-1">
+            <div className="flex flex-wrap items-center justify-center gap-2 animate-fadeIn">
+              <span className="font-semibold text-slate-500 uppercase tracking-wider text-[10px] hidden md:inline mr-1">
                 {lang === "fr" ? "Actions groupées :" : "Bulk Actions:"}
               </span>
 

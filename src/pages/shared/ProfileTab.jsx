@@ -1,5 +1,5 @@
 import React from "react";
-import { Settings } from "lucide-react";
+import { Settings, User as UserIcon, ShieldAlert, Download } from "lucide-react";
 export default function ProfileTab({
   lang,
   user,
@@ -10,7 +10,16 @@ export default function ProfileTab({
   profileEmail,
   profileLang,
   setProfileLang,
+  profileParentName,
+  setProfileParentName,
+  profileParentPhone,
+  setProfileParentPhone,
+  profileParentLiving,
+  setProfileParentLiving,
   handleProfileUpdateSubmit,
+  teacherProfile,
+  schoolInfo,
+  principalSignature,
 }) {
   return (
     <div className="space-y-8 text-left">
@@ -101,6 +110,49 @@ export default function ProfileTab({
             </select>
           </div>
 
+          {user.role === "student" && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
+                    {lang === "fr" ? "Nom Complet du Parent" : "Parent Full Name"}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={profileParentName}
+                    onChange={(e) => setProfileParentName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
+                    {lang === "fr" ? "Numéro de Téléphone du Parent" : "Parent Phone Number"}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={profileParentPhone}
+                    onChange={(e) => setProfileParentPhone(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 transition"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
+                  {lang === "fr" ? "Lieu de Résidence" : "Place of Living"}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={profileParentLiving}
+                  onChange={(e) => setProfileParentLiving(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 transition"
+                />
+              </div>
+            </>
+          )}
+
           <div className="pt-6 border-t border-slate-100 flex justify-end">
             <button
               type="submit"
@@ -110,6 +162,95 @@ export default function ProfileTab({
             </button>
           </div>
         </form>
+
+        {/* Teacher ID Card Preview */}
+        {user.role === "teacher" && teacherProfile && schoolInfo && (
+          <div className="p-6 sm:p-8 pt-0 max-w-2xl">
+            <div className="space-y-3 pt-6 border-t border-slate-100">
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                {lang === "fr"
+                  ? "Aperçu de votre carte d'identité"
+                  : "Your Digital ID Card Live Preview"}
+              </label>
+
+              <div className="mt-4 p-5 rounded-2xl border border-slate-200/80 bg-slate-50 flex flex-col justify-between gap-4 shadow-sm hover:border-slate-300 transition relative overflow-hidden">
+                {/* Status Badge */}
+                <div className="flex items-center justify-between">
+                  <span
+                    className={`px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider rounded-full border ${
+                      teacherProfile.profile_photo_url
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
+                    }`}
+                  >
+                    {teacherProfile.profile_photo_url
+                      ? lang === "fr"
+                        ? "Photo Téléversée"
+                        : "Photo Uploaded / Active"
+                      : lang === "fr"
+                        ? "Photo Manquante"
+                        : "Photo Missing"}
+                  </span>
+
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    Staff ID: {user.id?.substring(0, 8).toUpperCase()}
+                  </span>
+                </div>
+
+                {/* Core details */}
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-18 rounded-lg bg-slate-200 border border-slate-300 overflow-hidden shrink-0 shadow-sm flex items-center justify-center">
+                    {teacherProfile.profile_photo_url ? (
+                      <img
+                        src={teacherProfile.profile_photo_url}
+                        alt="Teacher profile"
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <UserIcon className="w-6 h-6 text-slate-400" />
+                    )}
+                  </div>
+
+                  <div className="text-left space-y-1">
+                    <h4 className="font-bold text-sm text-slate-800 leading-tight">
+                      {user.first_name} {user.last_name}
+                    </h4>
+                    <p className="text-xs text-slate-500 font-medium">
+                      {user.email}
+                    </p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase">
+                      {teacherProfile.qualifications || (lang === "fr" ? "Sans Diplôme" : "No qualifications entered")}
+                    </p>
+                    <p className="text-[10px] text-indigo-600 font-semibold bg-indigo-50 border border-indigo-200/50 rounded-md px-1.5 py-0.5 inline-block">
+                      {lang === "fr" ? "Expérience" : "Experience"}:{" "}
+                      <span className="font-bold font-mono">{teacherProfile.experience_years || 0} {lang === "fr" ? "ans" : "years"}</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200/60">
+                  {teacherProfile.profile_photo_url ? (
+                    <a
+                      href={`/api/teacher-id-cards/download/${user.id}?lang=${lang}`}
+                      download={`Teacher_ID_Card_${user.last_name}.pdf`}
+                      className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition flex items-center gap-1.5 min-h-10 cursor-pointer decoration-transparent font-sans"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>{lang === "fr" ? "Télécharger PDF" : "Download PDF"}</span>
+                    </a>
+                  ) : (
+                    <div className="flex items-center gap-1 text-amber-600 text-xs font-bold">
+                      <ShieldAlert className="w-4 h-4 shrink-0" />
+                      <span>{lang === "fr" ? "Photo requise" : "Photo required for download"}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
